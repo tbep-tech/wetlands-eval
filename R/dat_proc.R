@@ -8,15 +8,6 @@ library(gdalUtilities)
 
 sf_use_s2(FALSE)
 
-##
-# base urls
-
-# https://www.fws.gov/program/national-wetlands-inventory/download-state-wetlands-data
-nwibaseurl <- 'https://documentst.ecosphere.fws.gov/wetlands/data/State-Downloads/'
-
-# https://prd-tnm.s3.amazonaws.com/index.html?prefix=StagedProducts/Hydrography/NHD/State/GDB/
-nhdbaseurl <- 'https://prd-tnm.s3.amazonaws.com/StagedProducts/Hydrography/NHD/State/'
-
 # to avoid error ParseException: Unknown WKB type 12.
 ensure_multipolygons <- function(X) {
   tmp1 <- tempfile(fileext = ".gpkg")
@@ -27,10 +18,19 @@ ensure_multipolygons <- function(X) {
   st_sf(st_drop_geometry(X), geom = st_geometry(Y))
 }
 
+##
+# base urls
+
+# https://www.fws.gov/program/national-wetlands-inventory/download-state-wetlands-data
+nwibaseurl <- 'https://documentst.ecosphere.fws.gov/wetlands/data/State-Downloads/'
+
+# https://prd-tnm.s3.amazonaws.com/index.html?prefix=StagedProducts/Hydrography/NHD/State/GDB/
+nhdbaseurl <- 'https://prd-tnm.s3.amazonaws.com/StagedProducts/Hydrography/NHD/State/'
+
 options(timeout = 3600)
 
 str <- Sys.time()
-for(i in state.abb[29:length(state.abb)]){
+for(i in state.abb){
 
   cat(i, '\n')
 
@@ -53,8 +53,7 @@ for(i in state.abb[29:length(state.abb)]){
 
   # read the wetland layer
   wetdat <- st_read(dsn = nwigdb, layer = nwishp, quiet = T) %>%
-    st_zm() #%>%
-    # ensure_multipolygons()
+    st_zm()
 
   ##
   # NHD
@@ -74,34 +73,37 @@ for(i in state.abb[29:length(state.abb)]){
   archive_extract(nhdzip)
 
   # get flowline
-  flodat <- st_read(nhdgdb, layer = 'NHDFlowline', quiet = T)
+  flodat <- st_read(nhdgdb, layer = 'NHDFlowline', quiet = T) %>%
+    st_zm()
 
   # get waterbody
-  wbddat <- st_read(nhdgdb, layer = 'NHDWaterBody', quiet = T)
-
-  # combine flowline and waterbody
-  nhddat <- bind_rows(flodat, wbddat) %>%
-    st_zm() # %>%
-    # ensure_multipolygons()
+  wbddat <- st_read(nhdgdb, layer = 'NHDWaterBody', quiet = T) %>%
+    st_zm()
 
   ##
   # get nearest and distance
 
   cat('\tGet wetland distance to NHD...\n')
 
-  # transform nhddat crs to crs of wetdat
-  nhddat <- st_transform(nhddat, crs = st_crs(wetdat))
+  # transform nhd data crs to crs of wetdat
+  flodat <- st_transform(flodat, crs = st_crs(wetdat))
+  wbddat <- st_transform(wbddat, crs = st_crs(wetdat))
 
-  # get index of nearest nhddat features to wetdat features
-  nearest <- try({st_nearest_feature(st_geometry(wetdat), st_geometry(nhddat))}, silent = T)
+  # get index of nearest nhd features to wetdat features
+  nearestflo <- try({st_nearest_feature(st_geometry(wetdat), st_geometry(flodat))}, silent = F)
+  nearestwbd <- try({st_nearest_feature(st_geometry(wetdat), st_geometry(wbddat))}, silent = F)
 
-  if(inherits(nearest, 'try-error'))
-    next()
+  if(inherits(nearestflo, 'try-error') | inherits(nearestwbd, 'try-error')){
+    wetdat <- ensure_multipolygons(wetdat)
+    nearestflo <- try({st_nearest_feature(st_geometry(wetdat), st_geometry(flodat))}, silent = F)
+    nearestwbd <- try({st_nearest_feature(st_geometry(wetdat), st_geometry(wbddat))}, silent = F)
+  }
 
-  # add distance to nearest nhd to wet
-  neardist <- try({st_distance(st_geometry(wetdat), st_geometry(nhddat[nearest,]), by_element = T)})
+  # get distance of nearest nhd to wet
+  neardistflo <- try({st_distance(st_geometry(wetdat), st_geometry(flodat[nearestflo, ]), by_element = T)})
+  neardistwbd <- try({st_distance(st_geometry(wetdat), st_geometry(wbddat[nearestwbd, ]), by_element = T)})
 
-  if(inherits(neardist, 'try-error'))
+  if(inherits(neardistflo, 'try-error') | inherits(neardistwbd, 'try-error'))
     next()
 
   ##
@@ -111,9 +113,9 @@ for(i in state.abb[29:length(state.abb)]){
 
   out <- wetdat %>%
     st_set_geometry(NULL) %>%
-    select(ACRES) %>%
+    select(ATTRIBUTE, ACRES, WETLAND_TYPE) %>%
     mutate(
-      neardest = neardist,
+      neardist = pmin(neardistflo, neardistwbd),
       state = i
     )
 
@@ -133,7 +135,7 @@ for(i in state.abb[29:length(state.abb)]){
   unlink(gsub('\\.gdb$', '.xml', nhdgdb))
   unlink(nwigdb, recursive = T)
   unlink(nhdgdb, recursive = T)
-  rm(list = c('flodat', 'wbddat', 'nhddat', 'wetdat'))
+  rm(list = c('flodat', 'wbddat', 'wetdat'))
 
   print(Sys.time() - str)
 
