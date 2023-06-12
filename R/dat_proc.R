@@ -8,8 +8,13 @@ library(gdalUtilities)
 
 sf_use_s2(FALSE)
 
+##
 # base urls
+
+# https://www.fws.gov/program/national-wetlands-inventory/download-state-wetlands-data
 nwibaseurl <- 'https://documentst.ecosphere.fws.gov/wetlands/data/State-Downloads/'
+
+# https://prd-tnm.s3.amazonaws.com/index.html?prefix=StagedProducts/Hydrography/NHD/State/GDB/
 nhdbaseurl <- 'https://prd-tnm.s3.amazonaws.com/StagedProducts/Hydrography/NHD/State/'
 
 # to avoid error ParseException: Unknown WKB type 12.
@@ -57,7 +62,7 @@ for(i in state.abb[29:length(state.abb)]){
   cat('\tGet NHD data...\n')
 
   # get dl url
-  state <- abbr2state(i)
+  state <- gsub('\\s', '_', abbr2state(i))
   nhdzip <- paste0("NHD_H_", state, "_State_GDB.zip")
   nhdurl <- paste0(nhdbaseurl, "GDB/", nhdzip)
   nhdgdb <- gsub('\\.zip$', '.gdb', nhdzip)
