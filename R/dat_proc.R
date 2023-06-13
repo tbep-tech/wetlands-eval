@@ -5,8 +5,6 @@ library(usdata)
 library(here)
 library(archive)
 library(gdalUtilities)
-library(doParallel)
-library(foreach)
 
 # to avoid error ParseException: Unknown WKB type 12.
 ensure_multipolygons <- function(X) {
@@ -29,20 +27,12 @@ nhdbaseurl <- 'https://prd-tnm.s3.amazonaws.com/StagedProducts/Hydrography/NHD/S
 
 options(timeout = 3600)
 
-cl <- makeCluster(detectCores() - 5)
-registerDoParallel(cl)
+# get state abbs already done
+fls <- gsub('^wet|\\.RData$', '', list.files('data'))
+sts <- state.abb[!state.abb %in% fls]
 
 str <- Sys.time()
-foreach(i = state.abb,
-        .packages = c('here', 'sf', 'dplyr', 'datasets', 'usdata', 'archive', 'gdalUtilities'),
-        .export = c('nwibaseurl', 'nhdbaseurl', 'ensure_multipolygons')
-        ) %dopar% {
-
-  options(timeout = 3600)
-  sf_use_s2(FALSE)
-
-  # log
-  sink(here('log.txt'))
+for(i in sts){
 
   cat(i, '\n')
 
@@ -150,7 +140,5 @@ foreach(i = state.abb,
   rm(list = c('flodat', 'wbddat', 'wetdat'))
 
   print(Sys.time() - str)
-
-  sink()
 
 }
