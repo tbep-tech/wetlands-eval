@@ -51,6 +51,7 @@ p1 <- ggplot(toplo1, aes(y = state, x = cnt, fill = isolated)) +
   geom_col(alpha = 0.8) +
   scale_x_continuous(expand = c(0, 0)) +
   scale_fill_manual(values = c('lightblue', 'red')) +
+  guides(fill = guide_legend(reverse=T)) +
   theme_minimal() +
   theme(
     panel.grid.major.y = element_blank(),
@@ -86,7 +87,8 @@ p2 <- ggplot(toplo2, aes(y = state, x = acres, fill = isolated)) +
   geom_col(alpha = 0.8) +
   scale_x_continuous(expand = c(0, 0)) +
   scale_fill_manual(values = c('lightblue', 'red')) +
-  facet_wrap(~WETLAND_TYPE, scales = 'free_x') +
+  guides(colour = guide_legend(reverse=T))
+  # facet_wrap(~WETLAND_TYPE, scales = 'free_x') +
   theme_minimal() +
   theme(
     panel.grid.major.y = element_blank(),
