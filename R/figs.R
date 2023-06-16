@@ -87,7 +87,7 @@ p2 <- ggplot(toplo2, aes(y = state, x = acres, fill = isolated)) +
   geom_col(alpha = 0.8) +
   scale_x_continuous(expand = c(0, 0)) +
   scale_fill_manual(values = c('lightblue', 'red')) +
-  guides(colour = guide_legend(reverse=T))
+  guides(colour = guide_legend(reverse=T)) +
   # facet_wrap(~WETLAND_TYPE, scales = 'free_x') +
   theme_minimal() +
   theme(
@@ -95,7 +95,14 @@ p2 <- ggplot(toplo2, aes(y = state, x = acres, fill = isolated)) +
     panel.grid.minor.x = element_blank()
   ) +
   labs(
+    title = 'Wetlands at risk by state under new WOTUS definition',
+    subtitle = 'At risk are those greater than 10 meters from existing surface water',
+    caption = 'Source: National Hydrography Dataset, National Wetland Inventory',
     y = NULL,
     fill = 'At risk?',
     x = 'Acres of wetlands (x 1million)'
   )
+
+png(here('figs/wetlandsacre.png'), res = 500, height = 7, width = 5, units = 'in')
+print(p2)
+dev.off()
