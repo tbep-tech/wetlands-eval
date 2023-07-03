@@ -36,6 +36,7 @@ for(fl in fls){
 }
 
 toplo1 <- ests %>%
+  filter(!WETLAND_TYPE %in% 'Estuarine and Marine Deepwater') %>%
   summarize(
     cnt = sum(cnt),
     acres = sum(acres),
@@ -71,6 +72,7 @@ print(p1)
 dev.off()
 
 toplo2 <- ests %>%
+  filter(!WETLAND_TYPE %in% 'Estuarine and Marine Deepwater') %>%
   summarize(
     cnt = sum(cnt),
     acres = sum(acres),
@@ -87,7 +89,7 @@ p2 <- ggplot(toplo2, aes(y = state, x = acres, fill = isolated)) +
   geom_col(alpha = 0.8) +
   scale_x_continuous(expand = c(0, 0)) +
   scale_fill_manual(values = c('lightblue', 'red')) +
-  guides(colour = guide_legend(reverse=T)) +
+  guides(fill = guide_legend(reverse=T)) +
   # facet_wrap(~WETLAND_TYPE, scales = 'free_x') +
   theme_minimal() +
   theme(
