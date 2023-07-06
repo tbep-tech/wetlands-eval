@@ -111,11 +111,17 @@ for(i in sts){
   ##
   # save
 
-  cat('\tSaving output...\n')
+  cat('\tGetting centroids and saving output...\n')
 
   out <- wetdat %>%
+    st_centroid() %>%
+    st_transform(crs = 4326) %>%
+    mutate(
+      LON = st_coordinates(.)[, 1],
+      LAT = st_coordinates(.)[, 2]
+    ) %>%
     st_set_geometry(NULL) %>%
-    select(ATTRIBUTE, ACRES, WETLAND_TYPE) %>%
+    select(ATTRIBUTE, ACRES, WETLAND_TYPE, LON, LAT) %>%
     mutate(
       neardist = pmin(neardistflo, neardistwbd),
       state = i
