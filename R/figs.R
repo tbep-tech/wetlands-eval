@@ -19,6 +19,7 @@ for(fl in fls){
   # summarize
 
   out <- wetdat %>%
+    filter(ACRES >= 0.25) %>%
     mutate(
       isolated = neardist > distthr
     ) %>%
