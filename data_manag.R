@@ -52,55 +52,55 @@ load(file = 'data/wetWV.RData')
 load(file = 'data/wetWY.RData')
 
 states <- rbind(wetAK,
-       wetAL,
-       wetAR,
-       wetAZ,
-       wetCA,
-       wetCO,
-       wetCT,
-       wetDE,
-       wetFL,
-       wetGA,
-       wetHI,
-       wetIA,
-       wetID,
-       wetIL,
-       wetIN,
-       wetKS,
-       wetKY,
-       wetLA,
-       wetMA,
-       wetMD,
-       wetME,
-       wetMI,
-       wetMN,
-       wetMO,
-       wetMS,
-       wetMT,
-       wetNC,
-       wetND,
-       wetNE,
-       wetNH,
-       wetNJ,
-       wetNM,
-       wetNV,
-       wetNY,
-       wetOH,
-       wetOK,
-       wetOR,
-       wetPA,
-       wetRI,
-       wetSC,
-       wetSD,
-       wetTN,
-       wetTX,
-       wetUT,
-       wetVA,
-       wetVT,
-       wetWA,
-       wetWI,
-       wetWV,
-       wetWY)
+                wetAL,
+                wetAR,
+                wetAZ,
+                wetCA,
+                wetCO,
+                wetCT,
+                wetDE,
+                wetFL,
+                wetGA,
+                wetHI,
+                wetIA,
+                wetID,
+                wetIL,
+                wetIN,
+                wetKS,
+                wetKY,
+                wetLA,
+                wetMA,
+                wetMD,
+                wetME,
+                wetMI,
+                wetMN,
+                wetMO,
+                wetMS,
+                wetMT,
+                wetNC,
+                wetND,
+                wetNE,
+                wetNH,
+                wetNJ,
+                wetNM,
+                wetNV,
+                wetNY,
+                wetOH,
+                wetOK,
+                wetOR,
+                wetPA,
+                wetRI,
+                wetSC,
+                wetSD,
+                wetTN,
+                wetTX,
+                wetUT,
+                wetVA,
+                wetVT,
+                wetWA,
+                wetWI,
+                wetWV,
+                wetWY)
 
 # Combine the Lake and Lakes wetland types
 states$WETLAND_TYPE <- ifelse(states$WETLAND_TYPE == "Lakes", "Lake", states$WETLAND_TYPE)
@@ -325,7 +325,7 @@ states_100m <- states0.25 %>%
 
 
 states_thresholds_wetlands <- rbind(states_1m,states_10m,states_20m,states_30m,states_40m,states_50m,
-                           states_60m,states_70m,states_80m,states_90m,states_100m)
+                                    states_60m,states_70m,states_80m,states_90m,states_100m)
 
 
 ################# BY THRESHOLD ###############
@@ -399,14 +399,24 @@ national_isolated_protection <- state_thresholds_protection %>%
             pct_n_atrisk_total = sum(n_atrisk)/nrow(states0.25)*100,
             pct_acres_atrisk_total = sum(acres_atrisk)/sum(states0.25$ACRES)*100)
 
-
 national_isolated_protection$threshold <- as.numeric(national_isolated_protection$threshold_cat)
 national_isolated_protection$threshold <- ifelse(national_isolated_protection$threshold > 1, (national_isolated_protection$threshold-1)*10,national_isolated_protection$threshold)
 
+# national stats by threshold & wetland & protection
+national_isolated_type_protection <- state_thresholds_wetlands_protection %>%
+  mutate(threshold_cat = as.factor(distthreshold)) %>%
+  group_by(threshold_cat, WETLAND_TYPE, GIW_protection) %>%
+  summarise(n_atrisk_total = sum(n_atrisk),
+            acres_atrisk_total = sum(acres_atrisk),
+            pct_n_atrisk_total = sum(n_atrisk)/nrow(states0.25)*100,
+            pct_acres_atrisk_total = sum(acres_atrisk)/sum(states0.25$ACRES)*100)
+
+national_isolated_type_protection$threshold <- as.numeric(national_isolated_type_protection$threshold_cat)
+national_isolated_type_protection$threshold <- ifelse(national_isolated_type_protection$threshold > 1, (national_isolated_type_protection$threshold-1)*10,national_isolated_type_protection$threshold)
 
 # national stats by threshold & wetland (limited/no protection only)
 
-national_isolated_type_protection <- state_thresholds_wetlands_protection %>%
+national_isolated_type_unprotected <- state_thresholds_wetlands_protection %>%
   filter(GIW_protection == "No" | GIW_protection == "Some") %>%
   mutate(threshold_cat = as.factor(distthreshold)) %>%
   group_by(threshold_cat, WETLAND_TYPE) %>%
@@ -416,14 +426,35 @@ national_isolated_type_protection <- state_thresholds_wetlands_protection %>%
             pct_acres_atrisk_total = sum(acres_atrisk)/sum(states0.25$ACRES)*100)
 
 
-national_isolated_type_protection$threshold <- as.numeric(national_isolated_type_protection$threshold_cat)
-national_isolated_type_protection$threshold <- ifelse(national_isolated_type_protection$threshold > 1, (national_isolated_type_protection$threshold-1)*10,national_isolated_type_protection$threshold)
+national_isolated_type_unprotected$threshold <- as.numeric(national_isolated_type_unprotected$threshold_cat)
+national_isolated_type_unprotected$threshold <- ifelse(national_isolated_type_unprotected$threshold > 1, (national_isolated_type_unprotected$threshold-1)*10,national_isolated_type_unprotected$threshold)
 
+
+#write.csv(national_isolated_protection, file = '/Users/bsimm/Dropbox/Tampa Bay Estuary Program/national_type_protections.csv')
 write.csv(national_isolated_type_protection, file = '/Users/bsimm/Dropbox/Tampa Bay Estuary Program/national_type_protections.csv')
+write.csv(national_isolated_type_unprotected, file = '/Users/bsimm/Dropbox/Tampa Bay Estuary Program/national_type_unprotected.csv')
 
 
+test <- state_thresholds_wetlands_protection %>%
+  mutate(threshold_cat = as.factor(distthreshold)) %>%
+  group_by(threshold_cat, WETLAND_TYPE, GIW_protection) %>%
+  summarise(n_atrisk_total = sum(n_atrisk),
+            acres_atrisk_total = sum(acres_atrisk))
+test2 <- merge(test, wetland_numbers, by = "WETLAND_TYPE", all.x = TRUE) %>%
+  mutate(pct_n_atrisk = n_atrisk_total/total_number*100,
+         pct_acres_atrisk = acres_atrisk_total/total_acreage*100)
 
+test2 %>%
+  filter(threshold_cat == "50") %>%
+  ggplot(aes(fill = forcats::fct_rev(GIW_protection), y=pct_n_atrisk, x=WETLAND_TYPE)) +
+  geom_bar(position="stack", stat="identity") +
+  ylim(0,50)
 
+test2 %>%
+  filter(threshold_cat == "50") %>%
+  ggplot(aes(fill = forcats::fct_rev(GIW_protection), y=pct_acres_atrisk, x=WETLAND_TYPE)) +
+  geom_bar(position="stack", stat="identity") +
+  ylim(0,50)
 
 
 ############ PLOTS #############
@@ -503,20 +534,25 @@ ggsave(file = '/Users/bsimm/Dropbox/Tampa Bay Estuary Program/national_acres_pro
 
 
 national_isolated_type_protection$WETLAND_TYPE <- factor(national_isolated_type_protection$WETLAND_TYPE,
-                                                         levels = c("Estuarine and Marine Deepwater","Estuarine and Marine Wetland",
-                                                                    "Freshwater Forested/Shrub Wetland","Freshwater Emergent Wetland",
-                                                                    "Freshwater Pond","Lake","Riverine","Other"))
+                                                         levels = c("Estuarine and Marine Wetland","Freshwater Forested/Shrub Wetland",
+                                                                    "Freshwater Emergent Wetland","Freshwater Pond","Lake","Riverine","Other"))
+national_isolated_type_unprotected$WETLAND_TYPE <- factor(national_isolated_type_unprotected$WETLAND_TYPE,
+                                                         levels = c("Estuarine and Marine Wetland","Freshwater Forested/Shrub Wetland",
+                                                                    "Freshwater Emergent Wetland","Freshwater Pond","Lake","Riverine","Other"))
+national_wetlands$WETLAND_TYPE <- factor(national_wetlands$WETLAND_TYPE,
+                                                          levels = c("Estuarine and Marine Wetland","Freshwater Forested/Shrub Wetland",
+                                                                     "Freshwater Emergent Wetland","Freshwater Pond","Lake","Riverine","Other"))
 
-ggplot(national_isolated_type_protection, aes(x = threshold, y = n_atrisk_total, fill = WETLAND_TYPE)) +
+ggplot(national_isolated_type_unprotected, aes(x = threshold, y = n_atrisk_total, fill = WETLAND_TYPE)) +
   geom_area(position = 'stack') +
-  scale_y_continuous(name = "Number", sec.axis = sec_axis(trans = ~./253844.5, name = "Pct")) +
+  scale_y_continuous(name = "Number", sec.axis = sec_axis(trans = ~./254165.8, name = "Pct")) +
   geom_point(position = 'stack')
 
 ggsave(file = '/Users/bsimm/Dropbox/Tampa Bay Estuary Program/national_n_type_unprotected.png', width = 200, height = 158, dpi = 500, units = "mm", bg = "transparent")
 
-ggplot(national_isolated_type_protection, aes(x = threshold, y = acres_atrisk_total, fill = WETLAND_TYPE)) +
+ggplot(national_isolated_type_unprotected, aes(x = threshold, y = acres_atrisk_total, fill = WETLAND_TYPE)) +
   geom_area(position = 'stack') +
-  scale_y_continuous(name = "Acres", sec.axis = sec_axis(trans = ~./2914783, name = "Pct")) +
+  scale_y_continuous(name = "Acres", sec.axis = sec_axis(trans = ~./2918865, name = "Pct")) +
   geom_point(position = 'stack')
 
 ggsave(file = '/Users/bsimm/Dropbox/Tampa Bay Estuary Program/national_acres_type_unprotected.png', width = 200, height = 158, dpi = 500, units = "mm", bg = "transparent")
@@ -552,7 +588,6 @@ ggplot(states_thresholds, aes(x = distthreshold, y = pct_n_atrisk, colour = pct_
   scale_colour_gradient2(midpoint = mid, low = "black", mid = "blue", high = "red", na.value = NA)
 
 ggsave(file = '/Users/bsimm/Dropbox/Tampa Bay Estuary Program/state_thresholds_pctN.png', width = 158, height = 196, dpi = 500, units = "mm", bg = "transparent")
-
 
 
 
