@@ -1,5 +1,5 @@
 ---
-title: "Density of tidal wetlands at risk on the Gulf Coast"
+title: "Relative densities of wetlands at risk"
 author: 
   - name: Marcus Beck, <mbeck@tbep.org>
 institute: "Tampa Bay Estuary Program"
@@ -27,7 +27,142 @@ library(MASS)
 library(terra)
 library(tmap)
 library(MASS)
+```
 
+Wetlands at risk are those identified as 50 meters or greater from NHD flowlines or waterbodies.  
+
+### CONUS all wetland categories
+```{r}
+#| eval: false
+##
+# create conus boundary
+
+data("state_boundaries_wgs84")
+
+conusbnds <- state_boundaries_wgs84 %>%
+  filter(!STATE_ABBR %in% c('PR', 'VI', 'AK', 'HI')) %>%
+  st_transform(crs = 5070) %>%
+  st_simplify(dTolerance = 100)
+
+conus <- conusbnds %>%
+  st_make_valid() %>%
+  st_union() %>%
+  st_sf() %>%
+  st_cast('POLYGON')
+
+##
+# get all wetland data
+
+fls <- list.files('data', full.names = T)
+fls <- fls[!grepl('AK|HI', fls)]
+
+ests <- NULL
+for(fl in fls){
+
+  cat(fl, '\n')
+
+  # load file
+
+  load(here(fl))
+  nm <- gsub('\\.RData$', '', basename(fl))
+  wetdat <- get(nm)
+
+  # get isolated
+
+  out <- wetdat %>%
+    filter(ACRES >= 0.25) %>%
+    filter(!WETLAND_TYPE %in% 'Estuarine and Marine Deepwater') %>%
+    filter(as.numeric(neardist) >= 50) %>%
+    mutate(
+      state = gsub('^wet', '', nm)
+    )
+
+  ests <- rbind(ests, out)
+
+}
+
+ests <- ests %>%
+  mutate(
+    WETLAND_TYPE = ifelse(WETLAND_TYPE == 'Lakes', 'Lake', WETLAND_TYPE)
+  ) %>%
+  st_as_sf(coords = c('LON', 'LAT'), crs = 4326) %>%
+  st_transform(crs = st_crs(conus))
+
+##
+# get point density
+
+typs <- unique(ests$WETLAND_TYPE)
+bnds <- st_bbox(conus)
+lims <- c(bnds[c(1, 3)], bnds[c(2, 4)])
+
+maskls <- vector('list', length(typs))
+names(maskls) <- typs
+for(typ in typs){
+
+  cat(typ, '\n')
+
+  tomap <- ests %>%
+    filter(WETLAND_TYPE == typ)
+
+  pts <- tomap %>%
+    st_coordinates() %>%
+    as_tibble() %>%
+    sample_n(min(1e5, nrow(.)))
+
+  nbin <- 1000
+  hin <- c(width.SJ(pts$X, nb = nbin, method = 'dpi'), width.SJ(pts$Y, nb = nbin, method = 'dpi'))
+  int <- MASS::kde2d(pts$X, pts$Y, n = 1000, lims = lims)
+
+  df <- expand.grid(x = int$x, y = int$y, KEEP.OUT.ATTRS = FALSE)
+  df$z <- as.vector(int$z) * 1e11
+  denrest <- rast(df, crs = 'epsg:5070')
+
+  denmask <- mask(denrest, conus)
+
+  maskls[[typ]] <- denmask
+
+}
+
+##
+# create tmap
+
+bbox_new <- st_bbox(conus) # current bounding box
+# xrange <- bbox_new$xmax - bbox_new$xmin
+yrange <- bbox_new$ymax - bbox_new$ymin
+# bbox_new[1] <- bbox_new[1] + (0.1 * xrange) # xmin - left
+# bbox_new[3] <- bbox_new[3] - (0.1 * xrange) # xmax - right
+bbox_new[2] <- bbox_new[2] - (0.2 * yrange) # ymin - bottom
+# bbox_new[4] <- bbox_new[4] + (0.2 * yrange) # ymax - top
+
+maskls <- maskls[sort(names(maskls))]
+
+tmplo <- lapply(seq_along(maskls), function(x){
+  typ <- names(maskls)[x]
+  out <- tm_shape(as(maskls[[x]], "Raster"), bbox = bbox_new) +
+    tm_raster(n = 50, palette = rev(viridisLite::viridis(50)),
+            alpha = 0.9) +
+    tm_shape(conusbnds) +
+    tm_polygons(col = NA, alpha = 0) +
+    tm_layout(legend.show = F, title.size = 0.75, title = typ,
+              title.position = c('center', 'bottom'),
+              frame = F)
+  return(out)
+})
+
+p <- tmap_arrange(tmplo, ncol = 2, outer.margins = 0)
+
+png(here('figs/allrisk.png'), width = 6, height = 9, units = 'in', res = 300)
+print(p)
+dev.off()
+```
+```{r}
+#| out-width: '100%'
+#| echo: false
+knitr::include_graphics(here('figs/allrisk.png'))
+```
+
+### GOM tidal wetland risk 
+```{r}
 gulfsta <- c('FL', 'AL', 'MS', 'LA', 'TX')
 
 ##
