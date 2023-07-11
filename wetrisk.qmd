@@ -8,7 +8,7 @@ format:
   html:
     theme: cosmo
     code-tools: 
-      source: https://github.com/tbep-tech/wetlands-eval/blob/main/tidalrisk.qmd
+      source: https://github.com/tbep-tech/wetlands-eval/blob/main/wetrisk.qmd
 code-fold: true
 execute:
   echo: true
