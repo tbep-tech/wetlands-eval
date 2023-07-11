@@ -1,4 +1,5 @@
 library(tidyverse)
+library(svglite)
 
 load(file = 'data/wetAK.RData')
 load(file = 'data/wetAL.RData')
@@ -343,22 +344,25 @@ national <- states_thresholds %>%
 national_wetlands <- states_thresholds_wetlands %>%
   mutate(threshold_cat = as.factor(distthreshold)) %>%
   group_by(threshold_cat, WETLAND_TYPE) %>%
-  summarise(n_atrisk_total = sum(n_atrisk),
-            acres_atrisk_total = sum(acres_atrisk)) %>%
+  summarise(n_atrisk_type = sum(n_atrisk),
+            acres_atrisk_type = sum(acres_atrisk)) %>%
   as.data.frame()
 
 wetland_numbers <- states0.25 %>%
   group_by(WETLAND_TYPE) %>%
-  summarise(total_number = n(),
-            total_acreage = sum(ACRES)) %>%
+  summarise(total_number_type = n(),
+            total_acreage_type = sum(ACRES)) %>%
   as.data.frame()
 
 national_wetlands <- merge(national_wetlands, wetland_numbers, by = "WETLAND_TYPE", all.x = TRUE)
 
 national_wetlands <- national_wetlands %>%
-  mutate(pct_natrisk_total = n_atrisk_total/total_number*100,
-         pct_acres_atrisk_total = acres_atrisk_total/total_acreage*100) %>%
-  select(-c(total_number, total_acreage))
+  mutate(total_number_wetlands = sum(wetland_numbers$total_number_type),
+         total_acreage_wetlands = sum(wetland_numbers$total_acreage_type),
+         pct_natrisk_type = n_atrisk_type/total_number_type*100,
+         pct_acres_atrisk_type = acres_atrisk_type/total_acreage_type*100,
+         pct_natrisk_total = n_atrisk_type/total_number_wetlands*100,
+         pct_acres_atrisk_total = acres_atrisk_type/total_acreage_wetlands*100)
 
 state_numbers <- states0.25 %>%
   group_by(state) %>%
@@ -380,6 +384,10 @@ write.csv(state_numbers, file = '/Users/bsimm/Dropbox/Tampa Bay Estuary Program/
 write.csv(wetland_numbers, file = '/Users/bsimm/Dropbox/Tampa Bay Estuary Program/national_stats_type.csv')
 
 #############################
+
+
+
+
 
 
 ############### Adding State Protections #######################
@@ -504,33 +512,117 @@ ggsave(file = '/Users/bsimm/Dropbox/Tampa Bay Estuary Program/national_threshold
 
 
 
+
+
+
+
+plot1 = ggplot(national_isolated_protection, aes(x = threshold, y = n_atrisk_total, fill = forcats::fct_rev(GIW_protection))) +
+  geom_area(position = 'stack') +
+  scale_y_continuous(name = "Number", sec.axis = sec_axis(trans = ~./254165.8, name = "Pct"))
+
+ggsave(file='/Users/bsimm/Dropbox/Tampa Bay Estuary Program/national_n_protections.svg', plot=plot1, width=200, height=158, units = "mm", bg = "transparent")
+
+plot2 = ggplot(national_isolated_protection, aes(x = threshold, y = acres_atrisk_total, fill = forcats::fct_rev(GIW_protection))) +
+  geom_area(position = 'stack') +
+  scale_y_continuous(name = "Area", sec.axis = sec_axis(trans = ~./2918865, name = "Pct"))
+
+ggsave(file='/Users/bsimm/Dropbox/Tampa Bay Estuary Program/national_acres_protections.svg', plot=plot2, width=200, height=158, units = "mm", bg = "transparent")
+
+
+
 national_wetlands$threshold <- as.numeric(national_wetlands$threshold_cat)
 national_wetlands$threshold <- ifelse(national_wetlands$threshold > 1, (national_wetlands$threshold-1)*10,national_wetlands$threshold)
 
-ggplot(national_wetlands, aes(x=threshold, y=pct_natrisk_total, group=WETLAND_TYPE, color=WETLAND_TYPE)) +
+national_wetlands$WETLAND_TYPE <- factor(national_wetlands$WETLAND_TYPE, levels = c("Estuarine and Marine Wetland","Freshwater Forested/Shrub Wetland",
+                                                                                    "Freshwater Emergent Wetland","Freshwater Pond","Lake","Riverine","Other"))
+
+plot1 = ggplot(national_wetlands, aes(x = threshold, y = n_atrisk_type, fill = WETLAND_TYPE)) +
+  geom_area(position = 'stack') +
+  scale_y_continuous(name = "Number", sec.axis = sec_axis(trans = ~./254165.8, name = "Pct"))
+
+ggsave(file='/Users/bsimm/Dropbox/Tampa Bay Estuary Program/national_n_type.svg', plot=plot1, width=200, height=158, units = "mm", bg = "transparent")
+
+plot2 = ggplot(national_wetlands, aes(x = threshold, y = acres_atrisk_type, fill = WETLAND_TYPE)) +
+  geom_area(position = 'stack') +
+  scale_y_continuous(name = "Area", sec.axis = sec_axis(trans = ~./2918865, name = "Pct"))
+
+ggsave(file='/Users/bsimm/Dropbox/Tampa Bay Estuary Program/national_acres_type.svg', plot=plot2, width=200, height=158, units = "mm", bg = "transparent")
+
+
+
+
+
+
+# PIE TESTS
+states_thresholds_wetlands$WETLAND_TYPE <- factor(states_thresholds_wetlands$WETLAND_TYPE, levels = c("Estuarine and Marine Wetland","Freshwater Forested/Shrub Wetland",
+                                                                                    "Freshwater Emergent Wetland","Freshwater Pond","Lake","Riverine","Other"))
+states_thresholds_wetlands$state <- factor(states_thresholds_wetlands$state)
+
+forpies <- states_thresholds_wetlands %>%
+  filter(distthreshold == 50) %>%
+  group_by(WETLAND_TYPE, state, .drop = FALSE) %>%
+  summarise(n_atrisk_total = sum(n_atrisk))
+
+
+pieplot <- ggplot(forpies, aes(x="", y=n_atrisk_total, fill=WETLAND_TYPE)) +
+  geom_bar(width = 1, stat = "identity", position = position_fill()) +
+  coord_polar("y", start=0) +
+  scale_fill_manual(values = c("Estuarine and Marine Wetland" = "#7B76AD",
+                               "Freshwater Forested/Shrub Wetland" = "#017B7B",
+                               "Freshwater Emergent Wetland" = "#02ADAB",
+                               "Freshwater Pond" = "#015D7E",
+                               "Lake" = "#58A6C3",
+                               "Riverine" = "#A68461",
+                               "Other" = "#4A4A4A")) +
+  facet_wrap(~state, nrow = 5) +
+  theme(panel.background = element_rect(fill='transparent'),
+        plot.background = element_rect(fill='transparent', color=NA),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        legend.background = element_rect(fill='transparent'),
+        legend.box.background = element_rect(fill='transparent'),
+        axis.text = element_blank(),
+        axis.ticks = element_blank(),
+        panel.grid  = element_blank())
+
+ggsave(file='/Users/bsimm/Dropbox/Tampa Bay Estuary Program/state_n_type_isolated.svg', plot=pieplot, width=200, height=90, units = "mm", bg = "transparent")
+
+
+
+
+
+
+
+
+
+
+national_wetlands$threshold <- as.numeric(national_wetlands$threshold_cat)
+national_wetlands$threshold <- ifelse(national_wetlands$threshold > 1, (national_wetlands$threshold-1)*10,national_wetlands$threshold)
+
+plot1 = ggplot(national_wetlands, aes(x=threshold, y=pct_natrisk_total, group=WETLAND_TYPE, color=WETLAND_TYPE)) +
   geom_line(linewidth = 1) +
   xlab("Distance to Nearest Hydrological Feature (m)") +
   ylab("Percent At Risk") +
   geom_point() +
-  ylim(0,60)
+  ylim(0,100)
 
-ggsave(file = '/Users/bsimm/Dropbox/Tampa Bay Estuary Program/national_thresholds_types.png', width = 200, height = 158, dpi = 500, units = "mm", bg = "transparent")
+ggsave(file='/Users/bsimm/Dropbox/Tampa Bay Estuary Program/national_thresholds_n_types.svg', plot=plot1, width=200, height=158, units = "mm", bg = "transparent")
+
+plot2 = ggplot(national_wetlands, aes(x=threshold, y=pct_acres_atrisk_total, group=WETLAND_TYPE, color=WETLAND_TYPE)) +
+  geom_line(linewidth = 1) +
+  xlab("Distance to Nearest Hydrological Feature (m)") +
+  ylab("Percent Area At Risk") +
+  geom_point() +
+  ylim(0,30)
+
+ggsave(file='/Users/bsimm/Dropbox/Tampa Bay Estuary Program/national_thresholds_acres_types.svg', plot=plot2, width=200, height=158, units = "mm", bg = "transparent")
 
 
 
-ggplot(national_isolated_protection, aes(x = threshold, y = n_atrisk_total, fill = forcats::fct_rev(GIW_protection))) +
-  geom_area(position = 'stack') +
-  scale_y_continuous(name = "Number", sec.axis = sec_axis(trans = ~./253844.5, name = "Pct")) +
-  geom_point(position = 'stack')
 
-ggsave(file = '/Users/bsimm/Dropbox/Tampa Bay Estuary Program/national_n_protections.png', width = 200, height = 158, dpi = 500, units = "mm", bg = "transparent")
 
-ggplot(national_isolated_protection, aes(x = threshold, y = acres_atrisk_total, fill = forcats::fct_rev(GIW_protection))) +
-  geom_area(position = 'stack') +
-  scale_y_continuous(name = "Number", sec.axis = sec_axis(trans = ~./2914783, name = "Pct")) +
-  geom_point(position = 'stack')
 
-ggsave(file = '/Users/bsimm/Dropbox/Tampa Bay Estuary Program/national_acres_protections.png', width = 200, height = 158, dpi = 500, units = "mm", bg = "transparent")
+
 
 
 national_isolated_type_protection$WETLAND_TYPE <- factor(national_isolated_type_protection$WETLAND_TYPE,
