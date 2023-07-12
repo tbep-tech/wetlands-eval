@@ -58,12 +58,11 @@ pq_data <- open_dataset(source = here('data-parquet'))
 
 # get unique wetland types
 typs <- pq_data %>% 
-  group_by(WETLAND_TYPE) %>% 
-  summarise() %>% 
-  collect() %>% 
   filter(!WETLAND_TYPE %in% 'Estuarine and Marine Deepwater') %>%
-  pull() %>% 
-  sort()
+  dplyr::select(WETLAND_TYPE) %>%
+  distinct() %>% 
+  collect() %>% 
+  pull() 
 
 bnds <- st_bbox(conus)
 lims <- c(bnds[c(1, 3)], bnds[c(2, 4)])
