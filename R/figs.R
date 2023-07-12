@@ -1,43 +1,25 @@
 library(tidyverse)
 library(here)
+library(arrow)
 
-fls <- list.files(here('data'), full.names = T)
+pq_data <- open_dataset(here('data-parquet'))
+distthr <- 50
 
-distthr <- 10
-
-ests <- NULL
-for(fl in fls){
-
-  cat(basename(fl), '\n')
-
-  # load file
-
-  load(here(fl))
-  nm <- gsub('\\.RData$', '', basename(fl))
-  wetdat <- get(nm)
-
-  # summarize
-
-  out <- wetdat %>%
-    filter(ACRES >= 0.25) %>%
-    mutate(
-      isolated = neardist > distthr
-    ) %>%
-    summarise(
-      cnt = n(),
-      acres = sum(ACRES),
-      .by = c(isolated, WETLAND_TYPE)
-    ) %>%
-    mutate(
-      state = gsub('^wet', '', nm)
-    )
-
-  ests <- rbind(ests, out)
-
-}
+# get wetland data
+ests <- pq_data %>%
+  filter(ACRES >= 0.25) %>%
+  filter(!WETLAND_TYPE %in% 'Estuarine and Marine Deepwater') %>%
+  collect() %>%
+  mutate(
+    isolated = as.numeric(neardist) > distthr
+  ) %>%
+  summarise(
+    cnt = n(),
+    acres = sum(ACRES),
+    .by = c(isolated, WETLAND_TYPE, state)
+  )
 
 toplo1 <- ests %>%
-  filter(!WETLAND_TYPE %in% 'Estuarine and Marine Deepwater') %>%
   summarize(
     cnt = sum(cnt),
     acres = sum(acres),
@@ -61,7 +43,7 @@ p1 <- ggplot(toplo1, aes(y = state, x = cnt, fill = isolated)) +
   ) +
   labs(
     title = 'Wetlands at risk by state under new WOTUS definition',
-    subtitle = 'At risk are those greater than 10 meters from existing surface water',
+    subtitle = 'At risk are those greater than 50 meters from existing surface water',
     caption = 'Source: National Hydrography Dataset, National Wetland Inventory',
     y = NULL,
     fill = 'At risk?',
@@ -73,7 +55,6 @@ print(p1)
 dev.off()
 
 toplo2 <- ests %>%
-  filter(!WETLAND_TYPE %in% 'Estuarine and Marine Deepwater') %>%
   summarize(
     cnt = sum(cnt),
     acres = sum(acres),
@@ -99,7 +80,7 @@ p2 <- ggplot(toplo2, aes(y = state, x = acres, fill = isolated)) +
   ) +
   labs(
     title = 'Wetlands at risk by state under new WOTUS definition',
-    subtitle = 'At risk are those greater than 10 meters from existing surface water',
+    subtitle = 'At risk are those greater than 50 meters from existing surface water',
     caption = 'Source: National Hydrography Dataset, National Wetland Inventory',
     y = NULL,
     fill = 'At risk?',
