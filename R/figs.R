@@ -43,7 +43,7 @@ p1 <- ggplot(toplo1, aes(y = state, x = cnt, fill = isolated)) +
   ) +
   labs(
     title = 'Wetlands at risk by state under new WOTUS definition',
-    subtitle = 'At risk are those greater than 50 meters from existing surface water',
+    subtitle = paste('At risk are those greater than', distthr, 'meters from existing surface water'),
     caption = 'Source: National Hydrography Dataset, National Wetland Inventory',
     y = NULL,
     fill = 'At risk?',
@@ -80,7 +80,7 @@ p2 <- ggplot(toplo2, aes(y = state, x = acres, fill = isolated)) +
   ) +
   labs(
     title = 'Wetlands at risk by state under new WOTUS definition',
-    subtitle = 'At risk are those greater than 50 meters from existing surface water',
+    subtitle = paste('At risk are those greater than', distthr, 'meters from existing surface water'),
     caption = 'Source: National Hydrography Dataset, National Wetland Inventory',
     y = NULL,
     fill = 'At risk?',
