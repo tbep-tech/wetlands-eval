@@ -5,6 +5,7 @@ library(usdata)
 library(here)
 library(archive)
 library(gdalUtilities)
+library(arrow)
 
 # to avoid error ParseException: Unknown WKB type 12.
 ensure_multipolygons <- function(X) {
@@ -151,28 +152,12 @@ for(i in sts){
 
 }
 
-# add PAD status column to existing state files -----------------------------------------------
 
-# PAD status data
-# https://www.usgs.gov/programs/gap-analysis-project/science/pad-us-data-download
-padgdb <- 'T:/05_GIS/PADUS3/PAD_US3_0.gdb'
-paddat <- st_read(dsn = padgdb, layer = 'PADUS3_0Combined_Proclamation_Marine_Fee_Designation_Easement')
-paddat2 <- paddat %>%
-  filter(State_Nm == 'AK') %>%
-  ensure_multipolygons()
-  select(GAP_Sts)
-paddat2 <- ensure_multipolygons(paddat)
-paddat3 <- st_buffer(paddat2, dist = 0)
+# save as parquet -----------------------------------------------------------------------------
 
-%>%
-  ensure_multipolygons()
+fls <- list.files(here('data'), full.names = T, recursive = F)
 
-%>%
-  st_make_valid()
-
-# existing files
-fls <- list.files('data', full.names = T)
-
+alldat <- NULL
 for(fl in fls){
 
   cat(fl, '\n')
@@ -181,14 +166,26 @@ for(fl in fls){
 
   load(here(fl))
   nm <- gsub('\\.RData$', '', basename(fl))
-  wetdat <- get(nm) %>%
-    st_as_sf(coords = c('LON', 'LAT'), crs = 4326) %>%
-    st_transform(crs = st_crs(paddat))
+  wetdat <- get(nm)
 
-  # intersect wetdat with paddat
-  tmp <- st_intersects(wetdat, paddat2) %>%
-    .[1:length(.)] %>%
-    lapply(., function(x) ifelse(length(x) > 0, x, 'no gap')) %>%
-    unlist()
+  # get isolated
+
+  out <- wetdat %>%
+    mutate(
+      state = gsub('^wet', '', nm)
+    )
+
+  alldat <- rbind(alldat, out)
 
 }
+
+# save as parquet format by state and wetland type
+pq_path <- here('data-parquet')
+
+alldat %>%
+  mutate(
+    WETLAND_TYPE = ifelse(WETLAND_TYPE == 'Lakes', 'Lake', WETLAND_TYPE)
+  ) %>%
+  group_by(state, WETLAND_TYPE) %>%
+  write_dataset(path = pq_path)
+
