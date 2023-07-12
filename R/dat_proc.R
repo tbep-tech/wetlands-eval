@@ -16,6 +16,8 @@ ensure_multipolygons <- function(X) {
   st_sf(st_drop_geometry(X), geom = st_geometry(Y))
 }
 
+# find nearest nhd to nwi, save as state files ------------------------------------------------
+
 ##
 # base urls
 
@@ -146,5 +148,47 @@ for(i in sts){
   rm(list = c('flodat', 'wbddat', 'wetdat'))
 
   print(Sys.time() - str)
+
+}
+
+# add PAD status column to existing state files -----------------------------------------------
+
+# PAD status data
+# https://www.usgs.gov/programs/gap-analysis-project/science/pad-us-data-download
+padgdb <- 'T:/05_GIS/PADUS3/PAD_US3_0.gdb'
+paddat <- st_read(dsn = padgdb, layer = 'PADUS3_0Combined_Proclamation_Marine_Fee_Designation_Easement')
+paddat2 <- paddat %>%
+  filter(State_Nm == 'AK') %>%
+  ensure_multipolygons()
+  select(GAP_Sts)
+paddat2 <- ensure_multipolygons(paddat)
+paddat3 <- st_buffer(paddat2, dist = 0)
+
+%>%
+  ensure_multipolygons()
+
+%>%
+  st_make_valid()
+
+# existing files
+fls <- list.files('data', full.names = T)
+
+for(fl in fls){
+
+  cat(fl, '\n')
+
+  # load file
+
+  load(here(fl))
+  nm <- gsub('\\.RData$', '', basename(fl))
+  wetdat <- get(nm) %>%
+    st_as_sf(coords = c('LON', 'LAT'), crs = 4326) %>%
+    st_transform(crs = st_crs(paddat))
+
+  # intersect wetdat with paddat
+  tmp <- st_intersects(wetdat, paddat2) %>%
+    .[1:length(.)] %>%
+    lapply(., function(x) ifelse(length(x) > 0, x, 'no gap')) %>%
+    unlist()
 
 }

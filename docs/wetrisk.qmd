@@ -8,7 +8,8 @@ format:
   html:
     theme: cosmo
     code-tools: 
-      source: https://github.com/tbep-tech/wetlands-eval/blob/main/wetrisk.qmd
+      source: https://github.com/tbep-tech/wetlands-eval/blob/main/docs/wetrisk.qmd
+    self-contained: true
 code-fold: true
 execute:
   echo: true
@@ -26,7 +27,7 @@ library(here)
 library(MASS)
 library(terra)
 library(tmap)
-library(MASS)
+library(arrow)
 ```
 
 Wetlands at risk are those identified as 50 meters or greater from NHD flowlines or waterbodies.  
@@ -51,47 +52,19 @@ conus <- conusbnds %>%
   st_cast('POLYGON')
 
 ##
-# get all wetland data
-
-fls <- list.files('data', full.names = T)
-fls <- fls[!grepl('AK|HI', fls)]
-
-ests <- NULL
-for(fl in fls){
-
-  cat(fl, '\n')
-
-  # load file
-
-  load(here(fl))
-  nm <- gsub('\\.RData$', '', basename(fl))
-  wetdat <- get(nm)
-
-  # get isolated
-
-  out <- wetdat %>%
-    filter(ACRES >= 0.25) %>%
-    filter(!WETLAND_TYPE %in% 'Estuarine and Marine Deepwater') %>%
-    filter(as.numeric(neardist) >= 50) %>%
-    mutate(
-      state = gsub('^wet', '', nm)
-    )
-
-  ests <- rbind(ests, out)
-
-}
-
-ests <- ests %>%
-  mutate(
-    WETLAND_TYPE = ifelse(WETLAND_TYPE == 'Lakes', 'Lake', WETLAND_TYPE)
-  ) %>%
-  st_as_sf(coords = c('LON', 'LAT'), crs = 4326) %>%
-  st_transform(crs = st_crs(conus))
-
-##
 # get point density
 
-typs <- unique(ests$WETLAND_TYPE)
+pq_data <- open_dataset(source = here('data-parquet'))
+
+# get unique wetland types
+typs <- pq_data %>% 
+  group_by(WETLAND_TYPE) %>% 
+  summarise() %>% 
+  collect() %>% 
+  filter(!WETLAND_TYPE %in% 'Estuarine and Marine Deepwater') %>%
+  pull() %>% 
+  sort()
+
 bnds <- st_bbox(conus)
 lims <- c(bnds[c(1, 3)], bnds[c(2, 4)])
 
@@ -101,8 +74,15 @@ for(typ in typs){
 
   cat(typ, '\n')
 
-  tomap <- ests %>%
-    filter(WETLAND_TYPE == typ)
+  # get data by wetland type, gte 0.25 acres, isolated, conus, make sf
+  tomap <- pq_data %>%
+    filter(WETLAND_TYPE == typ) %>% 
+    filter(ACRES >= 0.25) %>%
+    filter(!state %in% c('AK', 'HI')) %>% 
+    collect() %>% 
+    filter(as.numeric(neardist) >= 50) %>% 
+    st_as_sf(coords = c('LON', 'LAT'), crs = 4326) %>%
+    st_transform(crs = st_crs(conus))
 
   pts <- tomap %>%
     st_coordinates() %>%
@@ -203,49 +183,28 @@ coast <- st_split(gulfstates$geometry, crds$geometry) %>%
 coastbuff <- st_buffer(coast, dist = 100000)
 
 ##
-# get wetlands in gulf states
+# get point density of tidal wetlands in gulf states
 
-fls <- list.files('data', pattern = paste(gulfsta, collapse = '|'), full.names = T)
+pq_data <- open_dataset(source = here('data-parquet'))
 
-ests <- NULL
-for(fl in fls){
-
-  # load file
-
-  load(here(fl))
-  nm <- gsub('\\.RData$', '', basename(fl))
-  wetdat <- get(nm)
-
-  # get isolated
-
-  out <- wetdat %>%
-    filter(ACRES >= 0.25) %>%
-    filter(!WETLAND_TYPE %in% 'Estuarine and Marine Deepwater') %>%
-    mutate(
-      isolated = as.numeric(neardist) >= 50,
-      state = gsub('^wet', '', nm)
-    ) %>%
-    filter(isolated)
-
-  ests <- rbind(ests, out)
-
-}
-
-##
-# get point density
-
-tomap <- ests %>%
+pts <- pq_data %>%
+  filter(ACRES >= 0.25) %>%
+  filter(WETLAND_TYPE == 'Estuarine and Marine Wetland') %>%
+  filter(state %in% gulfsta) %>% 
+  collect() %>% 
+  filter(as.numeric(neardist) >= 50) %>%
   st_as_sf(coords = c('LON', 'LAT'), crs = 4326) %>%
-  filter(WETLAND_TYPE == 'Estuarine and Marine Wetland')
-
-pts <- tomap %>%
   st_transform(crs = st_crs(coast)) %>%
   st_coordinates() %>%
   as_tibble()
 
+# kd2e limits
+bnds <- st_bbox(coastbuff)
+lims <- c(bnds[c(1, 3)], bnds[c(2, 4)])
+
 nbin <- 1000
 hin <- c(width.SJ(pts$X, nb = nbin, method = 'dpi'), width.SJ(pts$Y, nb = nbin, method = 'dpi'))
-int <- MASS::kde2d(pts$X, pts$Y, h = hin, n = 1000)
+int <- kde2d(pts$X, pts$Y, h = hin, n = 1000, lims = lims)
 
 df <- expand.grid(x = int$x, y = int$y, KEEP.OUT.ATTRS = FALSE)
 df$z <- as.vector(int$z) * 1e11
@@ -257,10 +216,8 @@ crs(denmask) <- 'epsg:5070'
 ##
 # create tmap leaflet
 
-tmrast <- tm_shape(as(denmask, "Raster")) +
+tm_rast <- tm_shape(as(denmask, "Raster")) +
   tm_raster(n = 20, palette = rev(viridisLite::viridis(20)),
             alpha = 0.7)
-tmap_leaflet(
-  tmrast
-)
+tmap_leaflet(tm_rast)
 ```
