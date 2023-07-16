@@ -1,0 +1,20 @@
+---
+title: "Methods for identifying hydrologically isolated wetlands"
+author: 
+  - name: Marcus Beck, <mbeck@tbep.org>
+institute: "Tampa Bay Estuary Program"
+date: "`r Sys.Date()`"
+format:
+  html:
+    theme: cosmo
+    code-tools: 
+      source: https://github.com/tbep-tech/wetlands-eval/blob/main/docs/methods.qmd
+    self-contained: true
+code-fold: true
+execute:
+  echo: true
+  warning: false
+---
+
+### CONUS all wetland categories
+
