@@ -189,3 +189,56 @@ alldat %>%
   group_by(state, WETLAND_TYPE) %>%
   write_dataset(path = pq_path)
 
+# # add PAD status column to existing state files -----------------------------------------------
+#
+# # parquet path
+# pqdata <- open_dataset(here('data-parquet'))
+#
+# # PAD status data
+# # https://www.usgs.gov/programs/gap-analysis-project/science/pad-us-data-download
+# # padfull <- st_read('T:/05_GIS/PADUS3/PADUS3_fulldata.shp') %>%
+# #   select(GAP_Sts, State_Nm) %>%
+# #   ensure_multipolygons()
+# # save(padfull, file = 'T:/05_GIS/PADUS3/padfull.RData', compress = 'xz')
+# load(file = 'T:/05_GIS/PADUS3/padfull.RData')
+#
+# # unique state abbr
+# sts <- pqdata %>%
+#   dplyr::select(state) %>%
+#   distinct() %>%
+#   collect() %>%
+#   pull()
+#
+# for(st in sts){
+#
+#   cat(st, '\n')
+#
+#   # load state data
+#   wetdat <- pqdata %>%
+#     filter(state == st) %>%
+#     collect() %>%
+#     st_as_sf(coords = c('LON', 'LAT'), crs = 4326) %>%
+#     st_transform(crs = st_crs(padfull)) %>%
+#     mutate(
+#       id = 1:n()
+#     )
+#
+#   # filter pad data by state
+#   padtmp <- padfull %>%
+#     filter(State_Nm %in% st)
+#
+#   # intersect wetdat with padtmp, accounts for overlappin polys in padtmp, gets min GAP
+#   wetint <- st_intersection(wetdat, padtmp) %>%
+#     st_set_geometry(NULL) %>%
+#     select(id, GAP_Sts) %>%
+#     filter(GAP_Sts == min(GAP_Sts), .by = id) %>%
+#     unique()
+#
+#   # combine wetdat with gap intersection
+#   wetdat <- wetdat %>%
+#     left_join(wetint, by = 'id')
+#
+#   # save
+#
+# }
+
