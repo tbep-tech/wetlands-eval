@@ -1,5 +1,5 @@
 ---
-title: "Methods for identifying hydrologically isolated wetlands"
+title: "Materials and Methods"
 author: 
   - name: Marcus Beck, <mbeck@tbep.org>
 institute: "Tampa Bay Estuary Program"
@@ -16,5 +16,9 @@ execute:
   warning: false
 ---
 
-### CONUS all wetland categories
+A national-scale assessment for the United States was conducted to identify potential hydrologically isolated wetlands (HIWs), defined as those beyond a given straight-line distance from existing waterbodies.  These wetlands were considered "at risk" of not being considered Waters of the United States (WOTUS) under the recent Supreme Court decision.  It is further recognized that wetland protections vary by state and the analysis jointly considered .... The National Wetland Inventory (NWI) maintained by the US Fish and Widlife Service and the National Hydrograpy Dataset (NHD) maintained by the US Geological Survey were used as the two data sources for the assessment.  These products are available as separate geodatabase files or shapefiles for each state and the custom analysis workflow operated at this spatial scale to quantity the amount and areal coverage of HIWs by state.  Both the NWI and NHD are not without accuracy limitations, although both currently represent the best estimate of surface water coverage in the US.  
+
+The analysis was conducted entirely using the R statistical programming language (R version 4.)
+
+
 
