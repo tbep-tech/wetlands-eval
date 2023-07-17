@@ -7,6 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 <meta name="author" content="Marcus Beck, mbeck@tbep.org">
+<meta name="dcterms.date" content="2023-07-17">
 
 <title>Materials and Methods</title>
 <style>
@@ -20,7 +21,26 @@ ul.task-list li input[type="checkbox"] {
 width: 0.8em;
 margin: 0 0.8em 0.2em -1em;  vertical-align: middle;
 }
-</style>
+
+div.csl-bib-body { }
+div.csl-entry {
+clear: both;
+}
+.hanging-indent div.csl-entry {
+margin-left:2em;
+text-indent:-2em;
+}
+div.csl-left-margin {
+min-width:2em;
+float:left;
+}
+div.csl-right-inline {
+margin-left:2em;
+padding-left:1em;
+}
+div.csl-indent {
+margin-left: 2em;
+}</style>
 
 
 <script>/*!
@@ -3014,7 +3034,7 @@ vertical-align: -.125em;
     <div>
     <div class="quarto-title-meta-heading">Published</div>
     <div class="quarto-title-meta-contents">
-      <p class="date">Invalid Date</p>
+      <p class="date">July 17, 2023</p>
     </div>
   </div>
   
@@ -3024,10 +3044,30 @@ vertical-align: -.125em;
 
 </header>
 
-<p>A national-scale assessment for the United States was conducted to identify potential hydrologically isolated wetlands (HIWs), defined as those beyond a given straight-line distance from existing waterbodies. These wetlands were considered “at risk” of not being considered Waters of the United States (WOTUS) under the recent Supreme Court decision. It is further recognized that wetland protections vary by state and the analysis jointly considered …. The National Wetland Inventory (NWI) maintained by the US Fish and Widlife Service and the National Hydrograpy Dataset (NHD) maintained by the US Geological Survey were used as the two data sources for the assessment. These products are available as separate geodatabase files or shapefiles for each state and the custom analysis workflow operated at this spatial scale to quantity the amount and areal coverage of HIWs by state. Both the NWI and NHD are not without accuracy limitations, although both currently represent the best estimate of surface water coverage in the US.</p>
-<p>The analysis was conducted entirely using the R statistical programming language (R version 4.)</p>
+<p>A national-scale assessment for the United States was conducted to identify potential hydrologically isolated wetlands (HIWs), defined as those beyond a given straight-line distance from existing waterbodies. These wetlands were considered at risk of exclusion from Waters of the United States (WOTUS) under the recent Supreme Court decision. It is further recognized that existing wetland protections at the state level may have precedence over federal protections. All HIWs were considered similarly across states regardless of existing protections as state rules can now be challenged under the new federal WOTUS definition.</p>
+<p>The National Wetland Inventory (NWI, <a href="https://www.fws.gov/program/national-wetlands-inventory" class="uri">https://www.fws.gov/program/national-wetlands-inventory</a>) maintained by the US Fish and Wildlife Service and the National Hydrograpy Dataset (NHD, <a href="https://www.usgs.gov/national-hydrography/national-hydrography-dataset" class="uri">https://www.usgs.gov/national-hydrography/national-hydrography-dataset</a>) maintained by the US Geological Survey were used for the assessment. The NWI is the most comprehensive geospatial dataset (1:24,000 scale) of wetlands in the US, representing the combined mapping efforts of states, federal agencies, tribal governments, regional and local governments, and nonprofit organizations. Data are available for over 35 million wetlands classified as estuarine and marine deepwater, estuarine and marine wetland, freshwater emergent wetland, freshwater forested/shrub wetland, freshwater pond, lake, riverine, and other. The final category includes farmed wetlands, saline seeps, or other miscellaneous types <span class="citation" data-cites="FGDC13">(<a href="#ref-FGDC13" role="doc-biblioref">Federal Geographic Data Committee 2013</a>)</span>. The NHD is mapped at 1:24,000 scale and includes line and area features for flow networks and waterbodies, respectively. Both the NWI and NHD are available as separate geodatabases or shapefiles for each state. A custom analysis workflow at this spatial scale was used to quantity the amount and areal coverage of HIWs by state. Both the NWI and NHD are not without accuracy limitations, which primarily include errors of omission/commission based on constraints of the data used to create each layer <span class="citation" data-cites="matthews2016 hafen2020">(<a href="#ref-matthews2016" role="doc-biblioref">Matthews et al. 2016</a>; <a href="#ref-hafen2020" role="doc-biblioref">Hafen et al. 2020</a>)</span>. However, both datasets represent the best estimate of surface water coverage in the US and an assessment of potential HIWs is informative regardless of the limitations.</p>
+<p>The analysis was conducted using the open source R statistical programming language <span class="citation" data-cites="RCT23">(version 4.2.3, <a href="#ref-RCT23" role="doc-biblioref">R Core Team 2023</a>)</span>. A custom workflow was developed to iteratively download the NWI and NHD spatial layers for each state to identify HWIs based on the Euclidean distance of wetland features to NHD features. The simple features package <span class="citation" data-cites="Pebesma23">(sf, <a href="#ref-Pebesma23" role="doc-biblioref">Pebesma and Bivand 2023</a>)</span> provided the core functions for the spatial analyses, including use of the <code>sf_read()</code> function for importing relevant layers from the state geodatabases and calculating distances between features using the <code>st_nearest()</code> function. For the latter analysis, the NWI layer for each state was compared separately to the flowline and waterbody layer from the NHD, resulting in an index of NHD features that were nearest to each NWI feature. The distance between the NWI features and the nearest NHD feature were estimated using the <code>st_distance()</code> function. Wetland centroids were also calculated using <code>st_centroid()</code> to provide spatial information for each feature and to minimize the storage requirement of the results. The final datasets included tabular information for each state, where each row was an individual wetland, with columns for the wetland attribute, acreage of the wetland, latitude and longitude (WGS 1984) of the centroid, distance of the wetland in meters to the nearest NHD feature, the state abbreviation, and wetland type. All geospatial analyses were conducted using the <a href="https://www.fws.gov/node/264848">Albers equal area projection</a> with a North American Datum of 1983. Code for the analysis workflow is available on GitHub at <a href="%5Bhttps://github.com/tbep-tech/wetlands-eval">https://github.com/tbep-tech/wetlands-eval</a>.</p>
+<p>The state tabular data with the distance of each wetland feature to the nearest NHD feature were used to quantify the amount and extent of HWIs using a range of thresholds. In total, 38,011,807 wetlands were assessed, where the distance to NHD features ranged from 0 to 26,650 meters. A range of distances for each NWI feature to the nearest NHD feature were used to develop an expectation of the amount and extent of HWIs are at risk in each state. The Supreme Court decision that wetlands must have a “continuous surface connection” to existing navigable waters does not provide specificity or quantitative guidance on how this should be defined. The range of values used to quantify potential HWIs varied from 1 to 100 meters (by 10 meter intervals) to take into account the uncertainty in the current definition, as well as the uncertainty in the mapping products used in the analysis. Based on these ranges, the amount and extent of HWIs in each state were quantified, including an assessment of HWIs by wetland type (i.e., freshwater emergent, freshwater forest/shrub, etc.). The most vulnerable wetland type by state was also identified.</p>
+<p>Additional methods for the analysis also considered wetlands which may not be at risk given current legislation and existing protected areas. First, all wetlands identified as estuarine and marine deepwater were removed from the analysis. These wetlands are those present entirely in submerged, subtidal environments that are permanently flooded, such as rock bottom, reefs, or other areas that support aquatic life but are not typically considered conventional wetlands based on soil or vegetation classifications. Moreover, these areas typically exist in subtidal habitats of surface waters under existing Clean Water Act protections and are therefore not at risk. Second, all wetlands with surface area less than 0.25 acres were excluded from analysis. These “small” wetlands represent those that are typically already unprotected and do not require permits for activities that can degrade or eliminate their function. This size threshold varies by state or smaller regulatory jurisdictions. For example, Florida uses a threshold of 0.5 acres (<a href="https://www.flrules.org/gateway/ChapterHome.asp?Chapter=62-340">Rule 32-340 F.A.C</a>), whereas Indiana uses a threshold of 0.1 acres (<a href="https://www.in.gov/idem/wetlands/information-about/state-regulated-wetlands-program/overview-of-idem-state-regulated-wetland-permit-types/">Indiana Code 13-18-22</a>).</p>
 
-</main>
+
+<div id="quarto-appendix" class="default"><section class="quarto-appendix-contents" role="doc-bibliography"><h2 class="anchored quarto-appendix-heading">References</h2><div id="refs" class="references csl-bib-body hanging-indent" role="list">
+<div id="ref-FGDC13" class="csl-entry" role="listitem">
+Federal Geographic Data Committee. 2013. <span>“Classification of Wetlands and Deepwater Habitats of the United States.”</span> Standard FGDC-STD-004-2013. Second. Washington, DC: Wetlands Subcommittee, Federal Geographic Data Committee; U.S. Fish; Wildlife Service.
+</div>
+<div id="ref-hafen2020" class="csl-entry" role="listitem">
+Hafen, Konrad C., Kyle W. Blasch, Alan Rea, Roy Sando, and Paul E. Gessler. 2020. <span>“The Influence of Climate Variability on the Accuracy of NHD Perennial and Nonperennial Stream Classifications.”</span> <em>JAWRA Journal of the American Water Resources Association</em> 56 (5): 903–16. <a href="https://doi.org/10.1111/1752-1688.12871">https://doi.org/10.1111/1752-1688.12871</a>.
+</div>
+<div id="ref-matthews2016" class="csl-entry" role="listitem">
+Matthews, Jeffrey W., Dennis Skultety, Bradley Zercher, Michael P. Ward, and Thomas J. Benson. 2016. <span>“Field Verification of Original and Updated National Wetlands Inventory Maps in Three Metropolitan Areas in Illinois, USA.”</span> <em>Wetlands</em> 36 (6): 1155–65. <a href="https://doi.org/10.1007/s13157-016-0836-6">https://doi.org/10.1007/s13157-016-0836-6</a>.
+</div>
+<div id="ref-Pebesma23" class="csl-entry" role="listitem">
+Pebesma, Edzer, and Roger Bivand. 2023. <em><span class="nocase">Spatial Data Science: With applications in R</span></em>. <span>Chapman and Hall/CRC</span>. <a href="https://r-spatial.org/book/">https://r-spatial.org/book/</a>.
+</div>
+<div id="ref-RCT23" class="csl-entry" role="listitem">
+R Core Team. 2023. <em>R: A Language and Environment for Statistical Computing</em>. Vienna, Austria: R Foundation for Statistical Computing. <a href="https://www.R-project.org/">https://www.R-project.org/</a>.
+</div>
+</div></section></div></main>
 <!-- /main column -->
 <script id="quarto-html-after-body" type="application/javascript">
 window.document.addEventListener("DOMContentLoaded", function (event) {
