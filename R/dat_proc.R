@@ -126,7 +126,7 @@ for(i in sts){
     st_set_geometry(NULL) %>%
     select(ATTRIBUTE, ACRES, WETLAND_TYPE, LON, LAT) %>%
     mutate(
-      neardist = pmin(neardistflo, neardistwbd),
+      neardist = pmin(neardistflo, neardistwbd), # meters
       state = i
     )
 
