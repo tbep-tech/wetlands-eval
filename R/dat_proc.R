@@ -57,8 +57,36 @@ for(i in sts){
   archive_extract(nwizip)
 
   # read the wetland layer
-  wetdat <- st_read(dsn = nwigdb, layer = nwishp, quiet = T) %>%
+  wetdatraw <- st_read(dsn = nwigdb, layer = nwishp, quiet = T) %>%
     st_zm()
+
+  # combine adjacent polygons by 0.5 m buffer distance
+  wetbuff <- st_buffer(wetdatraw, dist = 0.5) %>%
+    st_union() %>%
+    st_cast('POLYGON') %>%
+    st_sf() %>%
+    st_buffer(dist = - 0.5)
+
+  # get index of majority wetland type for unioned wetland layer, number of types
+  typ_fun <- function(x) names(table(x))[which.max(table(x))]
+  ints <- st_intersects(wetbuff, wetdatraw) %>%
+    as.data.frame() %>%
+    mutate(
+      WETLAND_TYPE = st_set_geometry(tmp[.$col.id, 'WETLAND_TYPE'], NULL)
+    ) %>%
+    summarise(
+      WETLAND_TYPE = typ_fun(WETLAND_TYPE),
+      njoin = n(),
+      .by = row.id
+    )
+
+  # assign wetland type from ints and calculate area
+  wetdat <- wetbuff %>%
+    mutate(
+      WETLAND_TYPE = ints$WETLAND_TYPE,
+      njoin = ints$njoin,
+      ACRES = st_area(.)
+    )
 
   ##
   # NHD
@@ -77,13 +105,15 @@ for(i in sts){
   # unzip file
   archive_extract(nhdzip)
 
-  # get flowline
+  # get flowline, subset relevant ftype
   flodat <- st_read(nhdgdb, layer = 'NHDFlowline', quiet = T) %>%
-    st_zm()
+    st_zm() %>%
+    filter(ftype %in% c(336, 460, 566, 558)) # canal/ditches, streams/rivers, coastlines, artificial paths
 
-  # get waterbody
+  # get waterbody, subset relevant ftype
   wbddat <- st_read(nhdgdb, layer = 'NHDWaterBody', quiet = T) %>%
-    st_zm()
+    st_zm() %>%
+    filter(ftype %in% c(390, 436, 493)) # lakes/ponds, reservoirs, estuaries
 
   ##
   # get nearest and distance
@@ -124,7 +154,7 @@ for(i in sts){
       LAT = st_coordinates(.)[, 2]
     ) %>%
     st_set_geometry(NULL) %>%
-    select(ATTRIBUTE, ACRES, WETLAND_TYPE, LON, LAT) %>%
+    select(ACRES, WETLAND_TYPE, LON, LAT) %>%
     mutate(
       neardist = pmin(neardistflo, neardistwbd), # meters
       state = i
