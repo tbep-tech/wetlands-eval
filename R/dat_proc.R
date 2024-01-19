@@ -106,11 +106,13 @@ for(i in sts){
   archive_extract(nhdzip)
 
   # get flowline, subset relevant ftype
+  # types https://www.usgs.gov/ngp-standards-and-specifications/national-hydrography-dataset-nhd-data-dictionary-feature-classes
   flodat <- st_read(nhdgdb, layer = 'NHDFlowline', quiet = T) %>%
     st_zm() %>%
     filter(ftype %in% c(336, 460, 566, 558)) # canal/ditches, streams/rivers, coastlines, artificial paths
 
   # get waterbody, subset relevant ftype
+  # types https://www.usgs.gov/ngp-standards-and-specifications/national-hydrography-dataset-nhd-data-dictionary-feature-classes
   wbddat <- st_read(nhdgdb, layer = 'NHDWaterBody', quiet = T) %>%
     st_zm() %>%
     filter(ftype %in% c(390, 436, 493)) # lakes/ponds, reservoirs, estuaries
