@@ -6,6 +6,7 @@ library(here)
 library(archive)
 library(gdalUtilities)
 library(arrow)
+library(units)
 
 # to avoid error ParseException: Unknown WKB type 12.
 ensure_multipolygons <- function(X) {
@@ -85,7 +86,7 @@ for(i in sts){
     mutate(
       WETLAND_TYPE = ints$WETLAND_TYPE,
       njoin = ints$njoin,
-      ACRES = st_area(.)
+      ACRES = as.numeric(set_units(st_area(.), 'acre'))
     )
 
   ##
