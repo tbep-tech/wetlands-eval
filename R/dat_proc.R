@@ -41,7 +41,7 @@ for(i in sts){
   cat(i, '\n')
 
   ##
-  # NWI
+  # get NWI
 
   cat('\tGet NWI data...\n')
 
@@ -59,38 +59,11 @@ for(i in sts){
 
   # read the wetland layer
   wetdatraw <- st_read(dsn = nwigdb, layer = nwishp, quiet = T) %>%
-    st_zm()
-
-  # combine adjacent polygons by 0.5 m buffer distance
-  wetbuff <- st_buffer(wetdatraw, dist = 0.5) %>%
-    st_union() %>%
-    st_cast('POLYGON') %>%
-    st_sf() %>%
-    st_buffer(dist = - 0.5)
-
-  # get index of majority wetland type for unioned wetland layer, number of types
-  typ_fun <- function(x) names(table(x))[which.max(table(x))]
-  ints <- st_intersects(wetbuff, wetdatraw) %>%
-    as.data.frame() %>%
-    mutate(
-      WETLAND_TYPE = st_set_geometry(tmp[.$col.id, 'WETLAND_TYPE'], NULL)
-    ) %>%
-    summarise(
-      WETLAND_TYPE = typ_fun(WETLAND_TYPE),
-      njoin = n(),
-      .by = row.id
-    )
-
-  # assign wetland type from ints and calculate area
-  wetdat <- wetbuff %>%
-    mutate(
-      WETLAND_TYPE = ints$WETLAND_TYPE,
-      njoin = ints$njoin,
-      ACRES = as.numeric(set_units(st_area(.), 'acre'))
-    )
+    st_zm() %>%
+    mutate(ind = 1:n())
 
   ##
-  # NHD
+  # get NHD
 
   cat('\tGet NHD data...\n')
 
@@ -118,14 +91,70 @@ for(i in sts){
     st_zm() %>%
     filter(ftype %in% c(390, 436, 493)) # lakes/ponds, reservoirs, estuaries
 
+  # transform nhd data crs to crs of wetdatraw
+  flodat <- st_transform(flodat, crs = st_crs(wetdatraw))
+  wbddat <- st_transform(wbddat, crs = st_crs(wetdatraw))
+
+  ##
+  # wetland preprocessing
+
+  cat('\tWetland preprocessing...\n')
+
+  # id those that immediately intersect with flodat or wbddat
+  flowetdatraw <- wetdatraw[flodat, ]
+  wbdwetdatraw <- wetdatraw %>%
+    filter(!ind %in% flowetdatraw$ind) %>%
+    .[wbddat, ]
+
+  # unique index of those that already overlap
+  indrm <- unique(c(flowetdatraw$ind, wbdwetdatraw$ind)) %>%
+    sort()
+
+  # remove those that already intersect with flodat or wbddat
+  # remove those that are de facto connected (riverine)
+  wetdatrawflt <- wetdatraw %>%
+    filter(!ind %in% indrm) %>%
+    filter(!WETLAND_TYPE %in% c('Estuarine and Marine Deepwater', 'Estuarine and Marine Wetland', 'Riverine'))
+
+  cat('\t\t', nrow(wetdatraw), 'in orginal\n')
+  cat('\t\t', nrow(wetdatrawflt), 'in filtered to combine\n')
+
+  cat('\ttbuffer and combine complexes...\n')
+
+  # combine adjacent polygons by 0.5 m buffer distance
+  wetbuff <- st_buffer(wetdatrawflt, dist = 0.5) %>%
+    st_union() %>%
+    st_cast('POLYGON') %>%
+    st_sf() %>%
+    st_buffer(dist = - 0.5)
+
+  # get index of majority wetland type for unioned wetland layer, number of types
+  typ_fun <- function(x) names(table(x))[which.max(table(x))]
+  ints <- st_intersects(wetbuff, wetdatrawflt) %>%
+    as.data.frame() %>%
+    mutate(
+      WETLAND_TYPE = st_set_geometry(wetdatraw[.$col.id, 'WETLAND_TYPE'], NULL)
+    ) %>%
+    summarise(
+      WETLAND_TYPE = typ_fun(WETLAND_TYPE),
+      njoin = n(),
+      .by = row.id
+    )
+
+  # assign wetland type from ints and calculate area
+  wetdat <- wetbuff %>%
+    mutate(
+      WETLAND_TYPE = ints$WETLAND_TYPE,
+      njoin = ints$njoin,
+      ACRES = as.numeric(set_units(st_area(.), 'acre'))
+    )
+
+  cat('\t\t', nrow(wetdat), 'in complexes combined\n')
+
   ##
   # get nearest and distance
 
   cat('\tGet wetland distance to NHD...\n')
-
-  # transform nhd data crs to crs of wetdat
-  flodat <- st_transform(flodat, crs = st_crs(wetdat))
-  wbddat <- st_transform(wbddat, crs = st_crs(wetdat))
 
   # get index of nearest nhd features to wetdat features
   nearestflo <- try({st_nearest_feature(st_geometry(wetdat), st_geometry(flodat))}, silent = F)
@@ -149,7 +178,9 @@ for(i in sts){
 
   cat('\tGetting centroids and saving output...\n')
 
-  out <- wetdat %>%
+  # those not calculated
+  out1 <- wetdatraw %>%
+    filter(!ind %in% wetdatrawflt$ind) %>%
     st_centroid() %>%
     st_transform(crs = 4326) %>%
     mutate(
@@ -159,9 +190,32 @@ for(i in sts){
     st_set_geometry(NULL) %>%
     select(ACRES, WETLAND_TYPE, LON, LAT) %>%
     mutate(
-      neardist = pmin(neardistflo, neardistwbd), # meters
-      state = i
+      nearest = 0,
+      state = i,
+      calculated = F
     )
+
+  # those calculated
+  out2 <- wetdat %>%
+    st_centroid() %>%
+    st_transform(crs = 4326) %>%
+    mutate(
+      LON = st_coordinates(.)[, 1],
+      LAT = st_coordinates(.)[, 2]
+    ) %>%
+    st_set_geometry(NULL) %>%
+    select(ACRES, WETLAND_TYPE, LON, LAT) %>%
+    mutate(
+      nearest = pmin(neardistflo, neardistwbd),
+      state = i,
+      calculated = T
+    )
+
+  # combine
+  out <- bind_rows(out1, out2) %>%
+    arrange(WETLAND_TYPE)
+
+  cat('\t\t', nrow(out), 'in output\n')
 
   outnm <- paste0('wet', i)
   outfl <- paste0(here('data'), '/', outnm, '.RData')
@@ -179,7 +233,7 @@ for(i in sts){
   unlink(gsub('\\.gdb$', '.xml', nhdgdb))
   unlink(nwigdb, recursive = T)
   unlink(nhdgdb, recursive = T)
-  rm(list = c('flodat', 'wbddat', 'wetdat'))
+  rm(list = c('flodat', 'wbddat', 'wetdat', 'wetdatraw', 'wetdatrawflt', 'wetbuff', 'ints', 'nearestflo', 'nearestwbd', 'neardistflo', 'neardistwbd', 'out', 'out1', 'out2', 'outfl', 'outnm', 'indrm'))
 
   print(Sys.time() - str)
 
