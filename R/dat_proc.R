@@ -119,7 +119,7 @@ for(i in sts){
   cat('\t\t', nrow(wetdatraw), 'in orginal\n')
   cat('\t\t', nrow(wetdatrawflt), 'in filtered to combine\n')
 
-  cat('\ttbuffer and combine complexes...\n')
+  cat('\t\tbuffer and combine complexes...\n')
 
   # combine adjacent polygons by 0.5 m buffer distance
   wetbuff <- st_buffer(wetdatrawflt, dist = 0.5) %>%
@@ -190,7 +190,7 @@ for(i in sts){
     st_set_geometry(NULL) %>%
     select(ACRES, WETLAND_TYPE, LON, LAT) %>%
     mutate(
-      nearest = 0,
+      nearest_m = 0,
       state = i,
       calculated = F
     )
@@ -206,7 +206,7 @@ for(i in sts){
     st_set_geometry(NULL) %>%
     select(ACRES, WETLAND_TYPE, LON, LAT) %>%
     mutate(
-      nearest = pmin(neardistflo, neardistwbd),
+      nearest_m = as.numeric(pmin(neardistflo, neardistwbd)),
       state = i,
       calculated = T
     )
@@ -214,6 +214,7 @@ for(i in sts){
   # combine
   out <- bind_rows(out1, out2) %>%
     arrange(WETLAND_TYPE)
+  names(out) <- tolower(names(out))
 
   cat('\t\t', nrow(out), 'in output\n')
 
