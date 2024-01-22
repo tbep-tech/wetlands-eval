@@ -12,9 +12,9 @@ library(units)
 ensure_multipolygons <- function(X) {
   tmp1 <- tempfile(fileext = ".gpkg")
   tmp2 <- tempfile(fileext = ".gpkg")
-  st_write(X, tmp1)
-  ogr2ogr(tmp1, tmp2, f = "GPKG", nlt = "MULTIPOLYGON")
-  Y <- st_read(tmp2)
+  st_write(X, tmp1, quiet = T)
+  ogr2ogr(tmp1, tmp2, f = "GPKG", nlt = "MULTIPOLYGON", progress = F)
+  Y <- st_read(tmp2, quiet = T)
   st_sf(st_drop_geometry(X), geom = st_geometry(Y))
 }
 
@@ -120,7 +120,7 @@ for(i in sts){
   cat('\t\t', nrow(wetdatraw), 'in original\n')
   cat('\t\t', nrow(wetdatrawflt), 'in filtered to combine\n')
 
-  cat('\t\tbuffer and combine complexes...\n')
+  cat('\t\t buffer and combine complexes...\n')
 
   # combine adjacent polygons by 0.5 m buffer distance
   wetbuff <- st_buffer(wetdatrawflt, dist = 0.5) %>%
@@ -134,7 +134,7 @@ for(i in sts){
   ints <- st_intersects(wetbuff, wetdatrawflt) %>%
     as.data.frame() %>%
     mutate(
-      WETLAND_TYPE = st_set_geometry(wetdatraw[.$col.id, 'WETLAND_TYPE'], NULL)
+      WETLAND_TYPE = st_set_geometry(wetdatrawflt[.$col.id, 'WETLAND_TYPE'], NULL)
     ) %>%
     summarise(
       WETLAND_TYPE = typ_fun(WETLAND_TYPE),
