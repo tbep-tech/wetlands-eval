@@ -60,7 +60,8 @@ for(i in sts){
   # read the wetland layer
   wetdatraw <- st_read(dsn = nwigdb, layer = nwishp, quiet = T) %>%
     st_zm() %>%
-    mutate(ind = 1:n())
+    mutate(ind = 1:n()) %>%
+    ensure_multipolygons()
 
   ##
   # get NHD
@@ -116,7 +117,7 @@ for(i in sts){
     filter(!ind %in% indrm) %>%
     filter(!WETLAND_TYPE %in% c('Estuarine and Marine Deepwater', 'Estuarine and Marine Wetland', 'Riverine'))
 
-  cat('\t\t', nrow(wetdatraw), 'in orginal\n')
+  cat('\t\t', nrow(wetdatraw), 'in original\n')
   cat('\t\t', nrow(wetdatrawflt), 'in filtered to combine\n')
 
   cat('\t\tbuffer and combine complexes...\n')
