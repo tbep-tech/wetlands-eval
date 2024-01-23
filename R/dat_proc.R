@@ -52,7 +52,11 @@ for(i in sts){
   nwishp <- paste0(i, '_Wetlands')
 
   # download file
-  download.file(url = nwiurl, destfile = here(nwizip), mode = 'wb', quiet = T)
+  wetdl <- try(download.file(url = nwiurl, destfile = here(nwizip), mode = 'wb', quiet = T), silent = T)
+  while(class(wetdl) == 'try-error'){
+    cat('\t\t', 'nwi download failed, retrying...\n')
+    wetdl <- try(download.file(url = nwiurl, destfile = here(nwizip), mode = 'wb', quiet = T), silent = T)
+  }
 
   # unzip file
   archive_extract(nwizip)
@@ -75,7 +79,11 @@ for(i in sts){
   nhdgdb <- gsub('\\.zip$', '.gdb', nhdzip)
 
   # download file
-  download.file(url = nhdurl, destfile = here(nhdzip), mode = 'wb', quiet = T)
+  nhddl <- try(download.file(url = nhdurl, destfile = here(nhdzip), mode = 'wb', quiet = T), silent = T)
+  while(class(nhddl) == 'try-error'){
+    cat('\t\t', 'nhd download failed, retrying...\n')
+    nhddl <- try(download.file(url = nhdurl, destfile = here(nhdzip), mode = 'wb', quiet = T), silent = T)
+  }
 
   # unzip file
   archive_extract(nhdzip)
