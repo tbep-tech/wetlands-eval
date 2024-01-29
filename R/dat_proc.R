@@ -72,6 +72,14 @@ for(i in sts){
     mutate(ind = 1:n()) %>%
     ensure_multipolygons()
 
+  # check for missing wetland type
+  chk <- is.na(wetdatraw$WETLAND_TYPE)
+  if(any(chk)){
+    cnt <- sum(chk)
+    cat('\t\t', paste0('missing wetland type (', paste(cnt, collapse = ','), '), removing...\n'))
+    wetdatraw <- wetdatraw[!chk, ]
+  }
+
   ##
   # get NHD
 
