@@ -41,6 +41,13 @@ for(i in sts){
   cat(i, '\n')
 
   ##
+  # subroutine for MN because it's problematic...
+  if(i == 'MN'){
+    source(here('R/mn_proc.R'))
+    next()
+  }
+
+  ##
   # get NWI
 
   cat('\tGet NWI data...\n')
