@@ -160,7 +160,7 @@ for(i in sts){
     st_union() %>%
     st_cast('POLYGON') %>%
     st_sf() %>%
-    st_buffer(dist = - 0.5)
+    st_buffer(dist = -0.5)
 
   # get index of majority wetland type for unioned wetland layer, number of types
   typ_fun <- function(x) names(table(x))[which.max(table(x))]
@@ -306,9 +306,9 @@ pq_path <- here('data-parquet')
 
 alldat %>%
   mutate(
-    WETLAND_TYPE = ifelse(WETLAND_TYPE == 'Lakes', 'Lake', WETLAND_TYPE)
+    wetland_type = ifelse(wetland_type == 'Lakes', 'Lake', wetland_type)
   ) %>%
-  group_by(state, WETLAND_TYPE) %>%
+  group_by(state, wetland_type) %>%
   write_dataset(path = pq_path)
 
 # # add PAD status column to existing state files -----------------------------------------------
