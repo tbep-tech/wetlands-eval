@@ -311,56 +311,76 @@ alldat %>%
   group_by(state, wetland_type) %>%
   write_dataset(path = pq_path)
 
-# # add PAD status column to existing state files -----------------------------------------------
-#
-# # parquet path
-# pqdata <- open_dataset(here('data-parquet'))
-#
-# # PAD status data
-# # https://www.usgs.gov/programs/gap-analysis-project/science/pad-us-data-download
-# # padfull <- st_read('T:/05_GIS/PADUS3/PADUS3_fulldata.shp') %>%
-# #   select(GAP_Sts, State_Nm) %>%
-# #   ensure_multipolygons()
-# # save(padfull, file = 'T:/05_GIS/PADUS3/padfull.RData', compress = 'xz')
+# add PAD status column to existing state files -----------------------------------------------
+
+# parquet path
+pqdata <- open_dataset(here('data-parquet'))
+
+# PAD status data
+# https://www.usgs.gov/programs/gap-analysis-project/science/pad-us-data-download
+# padfull <- st_read('T:/05_GIS/PADUS3/PADUS3_fulldata.shp') %>%
+#   select(GAP_Sts, State_Nm) %>%
+#   ensure_multipolygons()
+# save(padfull, file = 'T:/05_GIS/PADUS3/padfull.RData', compress = 'xz')
 # load(file = 'T:/05_GIS/PADUS3/padfull.RData')
 #
-# # unique state abbr
-# sts <- pqdata %>%
-#   dplyr::select(state) %>%
-#   distinct() %>%
-#   collect() %>%
-#   pull()
-#
+# # create separate rdata files each state in padfull
+# sts <- sort(unique(padfull$State_Nm))
 # for(st in sts){
-#
 #   cat(st, '\n')
-#
-#   # load state data
-#   wetdat <- pqdata %>%
-#     filter(state == st) %>%
-#     collect() %>%
-#     st_as_sf(coords = c('LON', 'LAT'), crs = 4326) %>%
-#     st_transform(crs = st_crs(padfull)) %>%
-#     mutate(
-#       id = 1:n()
-#     )
-#
-#   # filter pad data by state
 #   padtmp <- padfull %>%
 #     filter(State_Nm %in% st)
-#
-#   # intersect wetdat with padtmp, accounts for overlappin polys in padtmp, gets min GAP
-#   wetint <- st_intersection(wetdat, padtmp) %>%
-#     st_set_geometry(NULL) %>%
-#     select(id, GAP_Sts) %>%
-#     filter(GAP_Sts == min(GAP_Sts), .by = id) %>%
-#     unique()
-#
-#   # combine wetdat with gap intersection
-#   wetdat <- wetdat %>%
-#     left_join(wetint, by = 'id')
-#
-#   # save
-#
+#   save(padtmp, file = here(paste0('data-pad/', st, '.RData')), compress = 'xz')
 # }
+
+# unique state abbr
+sts <- pqdata %>%
+  dplyr::select(state) %>%
+  distinct() %>%
+  collect() %>%
+  pull()
+
+for(st in sts){
+
+  cat(st, '\n')
+
+  # load pad data by state
+  paddat<- load(here(paste0('data-pad/', st, '.RData')))
+
+  # load state data
+  wetdat <- pqdata %>%
+    filter(state == st) %>%
+    collect() %>%
+    st_as_sf(coords = c('lon', 'lat'), crs = 4326) %>%
+    st_transform(crs = st_crs(paddat)) %>%
+    mutate(
+      id = 1:n()
+    )
+
+  # intersect wetdat with padtmp, accounts for overlappin polys in padtmp, gets min GAP
+  wetint <- wetdat[paddat, ] %>%
+    st_intersection(., paddat) %>%
+    st_set_geometry(NULL) %>%
+    select(id, GAP_Sts) %>%
+    filter(GAP_Sts == min(GAP_Sts), .by = id) %>%
+    unique()
+
+  # combine wetdat with gap intersection
+  wetdat <- wetdat %>%
+    left_join(wetint, by = 'id') %>%
+    select(-id) %>%
+    mutate(
+      lon = st_coordinates(.)[, 1],
+      lat = st_coordinates(.)[, 2]
+    ) %>%
+    st_set_geometry(NULL) %>%
+    select(acres, lon, lat, nearest_m, calculated, state, wetland_type, GAP_Sts)
+
+  # save
+  outnm <- paste0('wet', i)
+  outfl <- paste0(here('data'), '/', outnm, '.RData')
+  assign(outnm, wetdat)
+  save(list = outnm, file = outfl)
+
+}
 
