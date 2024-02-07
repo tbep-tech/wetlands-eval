@@ -274,46 +274,7 @@ for(i in sts){
 
 }
 
-# save as parquet -----------------------------------------------------------------------------
-
-fls <- list.files(here('data'), full.names = T, recursive = F)
-
-alldat <- NULL
-for(fl in fls){
-
-  cat(fl, '\n')
-
-  # load file
-
-  load(here(fl))
-  nm <- gsub('\\.RData$', '', basename(fl))
-  wetdat <- get(nm)
-
-  # get isolated
-
-  out <- wetdat %>%
-    mutate(
-      state = gsub('^wet', '', nm)
-    )
-
-  alldat <- rbind(alldat, out)
-
-}
-
-# save as parquet format by state and wetland type
-pq_path <- here('data-parquet')
-
-alldat %>%
-  mutate(
-    wetland_type = ifelse(wetland_type == 'Lakes', 'Lake', wetland_type)
-  ) %>%
-  group_by(state, wetland_type) %>%
-  write_dataset(path = pq_path)
-
 # add PAD status column to existing state files -----------------------------------------------
-
-# parquet path
-pqdata <- open_dataset(here('data-parquet'))
 
 # # PAD status data
 # # https://www.usgs.gov/programs/gap-analysis-project/science/pad-us-data-download
@@ -340,12 +301,8 @@ pqdata <- open_dataset(here('data-parquet'))
 #
 # }
 
-# unique state abbr
-sts <- pqdata %>%
-  dplyr::select(state) %>%
-  distinct() %>%
-  collect() %>%
-  pull()
+# get state abbs from existing files
+sts <- gsub('^wet|\\.RData$', '', list.files('data'))
 
 str <- Sys.time()
 for(i in sts){
@@ -356,10 +313,9 @@ for(i in sts){
   load(here(paste0('data-pad/pad', i, '.RData')))
   paddat <- get(paste0('pad', i))
 
-  # load state data
-  wetdat <- pqdata %>%
-    filter(state == i) %>%
-    collect() %>%
+  # load state data, make sf
+  load(here(paste0('data/wet', i, '.RData')))
+  wetdat <- get(paste0('wet', i)) %>%
     st_as_sf(coords = c('lon', 'lat'), crs = 4326) %>%
     st_transform(crs = st_crs(paddat)) %>%
     mutate(
@@ -406,4 +362,40 @@ for(i in sts){
   print(Sys.time() - str)
 
 }
+
+# save as parquet -----------------------------------------------------------------------------
+
+fls <- list.files(here('data'), full.names = T, recursive = F)
+
+alldat <- NULL
+for(fl in fls){
+
+  cat(fl, '\n')
+
+  # load file
+
+  load(here(fl))
+  nm <- gsub('\\.RData$', '', basename(fl))
+  wetdat <- get(nm)
+
+  # get isolated
+
+  out <- wetdat %>%
+    mutate(
+      state = gsub('^wet', '', nm)
+    )
+
+  alldat <- rbind(alldat, out)
+
+}
+
+# save as parquet format by state and wetland type
+pq_path <- here('data-parquet')
+
+alldat %>%
+  mutate(
+    wetland_type = ifelse(wetland_type == 'Lakes', 'Lake', wetland_type)
+  ) %>%
+  group_by(state, wetland_type) %>%
+  write_dataset(path = pq_path)
 
