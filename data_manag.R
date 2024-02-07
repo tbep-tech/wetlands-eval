@@ -103,99 +103,35 @@ states <- rbind(wetAK,
                 wetWV,
                 wetWY)
 
-# Combine the Lake and Lakes wetland types
+# Combine the Lake and Lakes wetland types (same with RIverine)
 states$wetland_type <- ifelse(states$wetland_type == "Lakes", "Lake", states$wetland_type)
 states$wetland_type <- ifelse(states$wetland_type == "RIverine", "Riverine", states$wetland_type)
 
-# Remove deepwater & wetlands < 0.25 acres
+# Remove deepwater, estuaries, riverine & wetlands < 0.25 acres
 states <- states %>%
-  filter(wetland_type != "Estuarine and Marine Deepwater" & acres >= 0.25) # %>%
+  filter(wetland_type != "Estuarine and Marine Deepwater" & wetland_type != "Estuarine and Marine Wetland" &
+           wetland_type != "Riverine" & acres >= 0.25) # %>%
   #select(-c(ATTRIBUTE, wetland_type, acres, nearest_m))
 
+# Assign GAP status 9 to NAs
+states <- states %>%
+  mutate(GAP_Sts = coalesce(GAP_Sts, 9))
+
+states$GAP_Sts_cat <- as.factor(states$GAP_Sts)
+
+# Give each wetland a unique identifier
 states$UniqueID = seq.int(nrow(states))
 
 
 
 
 
-############## CALCULATING WETLAND CENTROID PROTECTED AREA OVERLAP ##############
-
-# Create point shapefile of wetland centroids
-library(sp)
-
-mycrs <- CRS("+init=epsg:4326")
-mypoints <- SpatialPointsDataFrame(states[,3:4], states, proj4string = mycrs)
-
-library(rgdal)
-
-writeOGR(mypoints, dsn = '/Users/bsimm/Downloads', layer = "wetland_centroids_new", driver = "ESRI Shapefile")
-
-
-# Load PAD-US and wetland centroid data
-library(sf)
-
-padus <- st_read('/Users/bsimm/Dropbox/Tampa Bay Estuary Program/Research/SCOTUS WOTUS/pad_data.shp', crs = 4326)
-centroids <- st_read('/Users/bsimm/Downloads/wetland_centroids_new.shp')
-
-st_is_valid(padus)
-st_is_valid(centroids)
-
-st_make_valid(padus)
-st_make_valid(centroids)
-
-
-
-padus1 <- padus %>%
-  filter(GAP_Sts == "1")
-
-
-
-
-
-centroids_padus1 <- st_intersection(centroids, padus1)
-
-
-centroids_padus <- st_intersection(centroids, padus)
-st_geometry(centroids_padus) = NULL
-
-
-
-
-
-
-
-gap12 <- read.csv(file = '/Users/bsimm/Downloads/wetland_centroids_GAP12.csv')
-gap12 <- gap12 %>%
-  mutate(GAPstatus = "GAP 1 or 2") %>%
-  select(c(UniqueID, GAPstatus)) %>%
-  distinct()
-
-states0.25 <- merge(states, gap12, by = "UniqueID", all.x = TRUE) %>%
-  mutate(protected = ifelse(is.na(GAPstatus), "No","Yes"))
-
-# Remove wetlands with centroids in GAP 1/2 protected areas
-states0.25 <- states0.25 %>%
-  filter(protected == "No")
-
-
-
-
-
-
-
-
-
-
-
-
-########### ALL WETLANDS (PROTECTED / UNPROTECTED) ##############
-
-states0.25 <- states
+########### ALL WETLANDS (IGNORE GAP STATUS) ##############
 
 ###### BY STATE #########
 
 # stats for at-risk wetlands > 1 m from hydrological feature
-states_1m <- states0.25 %>%
+states_1m <- states %>%
   group_by(state) %>%
   summarise(n_atrisk = sum(nearest_m>1),
             acres_atrisk = sum(acres[nearest_m>1]),
@@ -204,7 +140,7 @@ states_1m <- states0.25 %>%
   mutate(distthreshold = 1)
 
 # stats for at-risk wetlands > 10 m from hydrological feature
-states_10m <- states0.25 %>%
+states_10m <- states %>%
   group_by(state) %>%
   summarise(n_atrisk = sum(nearest_m>10),
             acres_atrisk = sum(acres[nearest_m>10]),
@@ -213,7 +149,7 @@ states_10m <- states0.25 %>%
   mutate(distthreshold = 10)
 
 # stats for at-risk wetlands > 20 m from hydrological feature
-states_20m <- states0.25 %>%
+states_20m <- states %>%
   group_by(state) %>%
   summarise(n_atrisk = sum(nearest_m>20),
             acres_atrisk = sum(acres[nearest_m>20]),
@@ -222,7 +158,7 @@ states_20m <- states0.25 %>%
   mutate(distthreshold = 20)
 
 # stats for at-risk wetlands > 30 m from hydrological feature
-states_30m <- states0.25 %>%
+states_30m <- states %>%
   group_by(state) %>%
   summarise(n_atrisk = sum(nearest_m>30),
             acres_atrisk = sum(acres[nearest_m>30]),
@@ -231,7 +167,7 @@ states_30m <- states0.25 %>%
   mutate(distthreshold = 30)
 
 # stats for at-risk wetlands > 40 m from hydrological feature
-states_40m <- states0.25 %>%
+states_40m <- states %>%
   group_by(state) %>%
   summarise(n_atrisk = sum(nearest_m>40),
             acres_atrisk = sum(acres[nearest_m>40]),
@@ -240,7 +176,7 @@ states_40m <- states0.25 %>%
   mutate(distthreshold = 40)
 
 # stats for at-risk wetlands > 50 m from hydrological feature
-states_50m <- states0.25 %>%
+states_50m <- states %>%
   group_by(state) %>%
   summarise(n_atrisk = sum(nearest_m>50),
             acres_atrisk = sum(acres[nearest_m>50]),
@@ -249,7 +185,7 @@ states_50m <- states0.25 %>%
   mutate(distthreshold = 50)
 
 # stats for at-risk wetlands > 60 m from hydrological feature
-states_60m <- states0.25 %>%
+states_60m <- states %>%
   group_by(state) %>%
   summarise(n_atrisk = sum(nearest_m>60),
             acres_atrisk = sum(acres[nearest_m>60]),
@@ -258,7 +194,7 @@ states_60m <- states0.25 %>%
   mutate(distthreshold = 60)
 
 # stats for at-risk wetlands > 70 m from hydrological feature
-states_70m <- states0.25 %>%
+states_70m <- states %>%
   group_by(state) %>%
   summarise(n_atrisk = sum(nearest_m>70),
             acres_atrisk = sum(acres[nearest_m>70]),
@@ -267,7 +203,7 @@ states_70m <- states0.25 %>%
   mutate(distthreshold = 70)
 
 # stats for at-risk wetlands > 80 m from hydrological feature
-states_80m <- states0.25 %>%
+states_80m <- states %>%
   group_by(state) %>%
   summarise(n_atrisk = sum(nearest_m>80),
             acres_atrisk = sum(acres[nearest_m>80]),
@@ -276,7 +212,7 @@ states_80m <- states0.25 %>%
   mutate(distthreshold = 80)
 
 # stats for at-risk wetlands > 90 m from hydrological feature
-states_90m <- states0.25 %>%
+states_90m <- states %>%
   group_by(state) %>%
   summarise(n_atrisk = sum(nearest_m>90),
             acres_atrisk = sum(acres[nearest_m>90]),
@@ -285,7 +221,7 @@ states_90m <- states0.25 %>%
   mutate(distthreshold = 90)
 
 # stats for at-risk wetlands > 100 m from hydrological feature
-states_100m <- states0.25 %>%
+states_100m <- states %>%
   group_by(state) %>%
   summarise(n_atrisk = sum(nearest_m>100),
             acres_atrisk = sum(acres[nearest_m>100]),
@@ -302,7 +238,7 @@ states_thresholds <- rbind(states_1m,states_10m,states_20m,states_30m,states_40m
 ########### BY STATE & wetland_type ##############
 
 # stats for at-risk wetlands > 1 m from hydrological feature
-states_1m <- states0.25 %>%
+states_1m <- states %>%
   group_by(state, wetland_type) %>%
   summarise(n_atrisk = sum(nearest_m>1),
             acres_atrisk = sum(acres[nearest_m>1]),
@@ -311,7 +247,7 @@ states_1m <- states0.25 %>%
   mutate(distthreshold = 1)
 
 # stats for at-risk wetlands > 10 m from hydrological feature
-states_10m <- states0.25 %>%
+states_10m <- states %>%
   group_by(state, wetland_type) %>%
   summarise(n_atrisk = sum(nearest_m>10),
             acres_atrisk = sum(acres[nearest_m>10]),
@@ -320,7 +256,7 @@ states_10m <- states0.25 %>%
   mutate(distthreshold = 10)
 
 # stats for at-risk wetlands > 20 m from hydrological feature
-states_20m <- states0.25 %>%
+states_20m <- states %>%
   group_by(state, wetland_type) %>%
   summarise(n_atrisk = sum(nearest_m>20),
             acres_atrisk = sum(acres[nearest_m>20]),
@@ -329,7 +265,7 @@ states_20m <- states0.25 %>%
   mutate(distthreshold = 20)
 
 # stats for at-risk wetlands > 30 m from hydrological feature
-states_30m <- states0.25 %>%
+states_30m <- states %>%
   group_by(state, wetland_type) %>%
   summarise(n_atrisk = sum(nearest_m>30),
             acres_atrisk = sum(acres[nearest_m>30]),
@@ -338,7 +274,7 @@ states_30m <- states0.25 %>%
   mutate(distthreshold = 30)
 
 # stats for at-risk wetlands > 40 m from hydrological feature
-states_40m <- states0.25 %>%
+states_40m <- states %>%
   group_by(state, wetland_type) %>%
   summarise(n_atrisk = sum(nearest_m>40),
             acres_atrisk = sum(acres[nearest_m>40]),
@@ -347,7 +283,7 @@ states_40m <- states0.25 %>%
   mutate(distthreshold = 40)
 
 # stats for at-risk wetlands > 50 m from hydrological feature
-states_50m <- states0.25 %>%
+states_50m <- states %>%
   group_by(state, wetland_type) %>%
   summarise(n_atrisk = sum(nearest_m>50),
             acres_atrisk = sum(acres[nearest_m>50]),
@@ -356,7 +292,7 @@ states_50m <- states0.25 %>%
   mutate(distthreshold = 50)
 
 # stats for at-risk wetlands > 60 m from hydrological feature
-states_60m <- states0.25 %>%
+states_60m <- states %>%
   group_by(state, wetland_type) %>%
   summarise(n_atrisk = sum(nearest_m>60),
             acres_atrisk = sum(acres[nearest_m>60]),
@@ -365,7 +301,7 @@ states_60m <- states0.25 %>%
   mutate(distthreshold = 60)
 
 # stats for at-risk wetlands > 70 m from hydrological feature
-states_70m <- states0.25 %>%
+states_70m <- states %>%
   group_by(state, wetland_type) %>%
   summarise(n_atrisk = sum(nearest_m>70),
             acres_atrisk = sum(acres[nearest_m>70]),
@@ -374,7 +310,7 @@ states_70m <- states0.25 %>%
   mutate(distthreshold = 70)
 
 # stats for at-risk wetlands > 80 m from hydrological feature
-states_80m <- states0.25 %>%
+states_80m <- states %>%
   group_by(state, wetland_type) %>%
   summarise(n_atrisk = sum(nearest_m>80),
             acres_atrisk = sum(acres[nearest_m>80]),
@@ -383,7 +319,7 @@ states_80m <- states0.25 %>%
   mutate(distthreshold = 80)
 
 # stats for at-risk wetlands > 90 m from hydrological feature
-states_90m <- states0.25 %>%
+states_90m <- states %>%
   group_by(state, wetland_type) %>%
   summarise(n_atrisk = sum(nearest_m>90),
             acres_atrisk = sum(acres[nearest_m>90]),
@@ -392,7 +328,7 @@ states_90m <- states0.25 %>%
   mutate(distthreshold = 90)
 
 # stats for at-risk wetlands > 100 m from hydrological feature
-states_100m <- states0.25 %>%
+states_100m <- states %>%
   group_by(state, wetland_type) %>%
   summarise(n_atrisk = sum(nearest_m>100),
             acres_atrisk = sum(acres[nearest_m>100]),
@@ -413,8 +349,8 @@ national <- states_thresholds %>%
   group_by(threshold_cat) %>%
   summarise(n_atrisk_total = sum(n_atrisk),
             acres_atrisk_total = sum(acres_atrisk),
-            pct_n_atrisk_total = sum(n_atrisk)/nrow(states0.25)*100,
-            pct_acres_atrisk_total = sum(acres_atrisk)/sum(states0.25$acres)*100)
+            pct_n_atrisk_total = sum(n_atrisk)/nrow(states)*100,
+            pct_acres_atrisk_total = sum(acres_atrisk)/sum(states$acres)*100)
 
 # national stats by threshold and wetland_type
 national_wetlands <- states_thresholds_wetlands %>%
@@ -424,7 +360,7 @@ national_wetlands <- states_thresholds_wetlands %>%
             acres_atrisk_type = sum(acres_atrisk)) %>%
   as.data.frame()
 
-wetland_numbers <- states0.25 %>%
+wetland_numbers <- states %>%
   group_by(wetland_type) %>%
   summarise(total_number_type = n(),
             total_acreage_type = sum(acres)) %>%
@@ -440,7 +376,7 @@ national_wetlands <- national_wetlands %>%
          pct_natrisk_total = n_atrisk_type/total_number_wetlands*100,
          pct_acres_atrisk_total = acres_atrisk_type/total_acreage_wetlands*100)
 
-state_numbers <- states0.25 %>%
+state_numbers <- states %>%
   group_by(state) %>%
   summarise(total_number = n(),
             total_acreage = sum(acres)) %>%
@@ -450,14 +386,14 @@ state_numbers <- states0.25 %>%
 ############## save datasets ##############
 
 
-write.csv(states_thresholds, file = '/Users/bsimm/Dropbox/Tampa Bay Estuary Program/state_thresholds.csv')
-write.csv(states_thresholds_wetlands, file = '/Users/bsimm/Dropbox/Tampa Bay Estuary Program/state_thresholds_types.csv')
+write.csv(states_thresholds, file = '/Users/bsimm/Dropbox/Tampa Bay Estuary Program/Research/SCOTUS WOTUS/state_thresholds.csv')
+write.csv(states_thresholds_wetlands, file = '/Users/bsimm/Dropbox/Tampa Bay Estuary Program/Research/SCOTUS WOTUS/state_thresholds_types.csv')
 
-write.csv(national, file = '/Users/bsimm/Dropbox/Tampa Bay Estuary Program/national_thresholds.csv')
-write.csv(national_wetlands, file = '/Users/bsimm/Dropbox/Tampa Bay Estuary Program/national_thresholds_types.csv')
+write.csv(national, file = '/Users/bsimm/Dropbox/Tampa Bay Estuary Program/Research/SCOTUS WOTUS/national_thresholds.csv')
+write.csv(national_wetlands, file = '/Users/bsimm/Dropbox/Tampa Bay Estuary Program/Research/SCOTUS WOTUS/national_thresholds_types.csv')
 
-write.csv(state_numbers, file = '/Users/bsimm/Dropbox/Tampa Bay Estuary Program/national_stats_state.csv')
-write.csv(wetland_numbers, file = '/Users/bsimm/Dropbox/Tampa Bay Estuary Program/national_stats_type.csv')
+write.csv(state_numbers, file = '/Users/bsimm/Dropbox/Tampa Bay Estuary Program/Research/SCOTUS WOTUS/national_stats_state.csv')
+write.csv(wetland_numbers, file = '/Users/bsimm/Dropbox/Tampa Bay Estuary Program/Research/SCOTUS WOTUS/national_stats_type.csv')
 
 #############################
 
@@ -480,8 +416,8 @@ national_isolated_protection <- state_thresholds_protection %>%
   group_by(threshold_cat, GIW_protection) %>%
   summarise(n_atrisk_total = sum(n_atrisk),
             acres_atrisk_total = sum(acres_atrisk),
-            pct_n_atrisk_total = sum(n_atrisk)/nrow(states0.25)*100,
-            pct_acres_atrisk_total = sum(acres_atrisk)/sum(states0.25$acres)*100)
+            pct_n_atrisk_total = sum(n_atrisk)/nrow(states)*100,
+            pct_acres_atrisk_total = sum(acres_atrisk)/sum(states$acres)*100)
 
 national_isolated_protection$threshold <- as.numeric(national_isolated_protection$threshold_cat)
 national_isolated_protection$threshold <- ifelse(national_isolated_protection$threshold > 1, (national_isolated_protection$threshold-1)*10,national_isolated_protection$threshold)
@@ -492,8 +428,8 @@ national_isolated_type_protection <- state_thresholds_wetlands_protection %>%
   group_by(threshold_cat, wetland_type, GIW_protection) %>%
   summarise(n_atrisk_total = sum(n_atrisk),
             acres_atrisk_total = sum(acres_atrisk),
-            pct_n_atrisk_total = sum(n_atrisk)/nrow(states0.25)*100,
-            pct_acres_atrisk_total = sum(acres_atrisk)/sum(states0.25$acres)*100)
+            pct_n_atrisk_total = sum(n_atrisk)/nrow(states)*100,
+            pct_acres_atrisk_total = sum(acres_atrisk)/sum(states$acres)*100)
 
 national_isolated_type_protection$threshold <- as.numeric(national_isolated_type_protection$threshold_cat)
 national_isolated_type_protection$threshold <- ifelse(national_isolated_type_protection$threshold > 1, (national_isolated_type_protection$threshold-1)*10,national_isolated_type_protection$threshold)
@@ -506,8 +442,8 @@ national_isolated_type_unprotected <- state_thresholds_wetlands_protection %>%
   group_by(threshold_cat, wetland_type) %>%
   summarise(n_atrisk_total = sum(n_atrisk),
             acres_atrisk_total = sum(acres_atrisk),
-            pct_n_atrisk_total = sum(n_atrisk)/nrow(states0.25)*100,
-            pct_acres_atrisk_total = sum(acres_atrisk)/sum(states0.25$acres)*100)
+            pct_n_atrisk_total = sum(n_atrisk)/nrow(states)*100,
+            pct_acres_atrisk_total = sum(acres_atrisk)/sum(states$acres)*100)
 
 
 national_isolated_type_unprotected$threshold <- as.numeric(national_isolated_type_unprotected$threshold_cat)
@@ -515,8 +451,8 @@ national_isolated_type_unprotected$threshold <- ifelse(national_isolated_type_un
 
 
 #write.csv(national_isolated_protection, file = '/Users/bsimm/Dropbox/Tampa Bay Estuary Program/national_type_protections.csv')
-write.csv(national_isolated_type_protection, file = '/Users/bsimm/Dropbox/Tampa Bay Estuary Program/national_type_protections.csv')
-write.csv(national_isolated_type_unprotected, file = '/Users/bsimm/Dropbox/Tampa Bay Estuary Program/national_type_unprotected.csv')
+write.csv(national_isolated_type_protection, file = '/Users/bsimm/Dropbox/Tampa Bay Estuary Program/Research/SCOTUS WOTUS/national_type_protections.csv')
+write.csv(national_isolated_type_unprotected, file = '/Users/bsimm/Dropbox/Tampa Bay Estuary Program/Research/SCOTUS WOTUS/national_type_unprotected.csv')
 
 
 
@@ -546,8 +482,6 @@ test2 %>%
 
 ############ PLOTS #############
 
-mid <- 35
-
 ggplot(states_thresholds, aes(x = distthreshold, y = pct_n_atrisk, colour = pct_n_atrisk)) +
   geom_line(linewidth = 1) +
   #scale_y_continuous(breaks = seq(0, 75, len = 4)) +
@@ -555,12 +489,10 @@ ggplot(states_thresholds, aes(x = distthreshold, y = pct_n_atrisk, colour = pct_
   ylab("Share of State's Wetlands Considered Isolated (%)") +
   labs(colour='%') +
   facet_wrap(vars(state), nrow = 10) +
-  scale_colour_gradient2(midpoint = mid, low = "black", mid = "blue", high = "red", na.value = NA)
+  scale_colour_gradient2(midpoint = median(states_thresholds$pct_n_atrisk), low = "black", mid = "blue", high = "red", na.value = NA)
 
-ggsave(file = '/Users/bsimm/Dropbox/Tampa Bay Estuary Program/state_thresholds_pctN.png', width = 158, height = 196, dpi = 500, units = "mm", bg = "transparent")
+ggsave(file = '/Users/bsimm/Dropbox/Tampa Bay Estuary Program/Research/SCOTUS WOTUS/state_thresholds_pctN.svg', width = 158, height = 196, dpi = 500, units = "mm", bg = "transparent")
 
-
-mid <- 20
 
 ggplot(states_thresholds, aes(x = distthreshold, y = pct_acres_atrisk, colour = pct_acres_atrisk)) +
   geom_line(linewidth = 1) +
@@ -569,9 +501,9 @@ ggplot(states_thresholds, aes(x = distthreshold, y = pct_acres_atrisk, colour = 
   ylab("Share of State's Wetland Area Considered Isolated (%)") +
   labs(colour='%') +
   facet_wrap(vars(state), nrow = 10) +
-  scale_colour_gradient2(midpoint = mid, low = "black", mid = "blue", high = "red", na.value = NA)
+  scale_colour_gradient2(midpoint = median(states_thresholds$pct_acres_atrisk), low = "black", mid = "blue", high = "red", na.value = NA)
 
-ggsave(file = '/Users/bsimm/Dropbox/Tampa Bay Estuary Program/state_thresholds_pctAC.png', width = 158, height = 196, dpi = 500, units = "mm", bg = "transparent")
+ggsave(file = '/Users/bsimm/Dropbox/Tampa Bay Estuary Program/Research/SCOTUS WOTUS/state_thresholds_pctAC.svg', width = 158, height = 196, dpi = 500, units = "mm", bg = "transparent")
 
 
 
@@ -583,49 +515,46 @@ ggplot() +
   geom_line(data = national, aes(x = threshold, y = pct_acres_atrisk_total), color = "red", linewidth = 1) +
   xlab("Distance to Nearest Hydrological Feature (m)") +
   ylab("Percent At Risk") +
-  ylim(0,40) +
+  ylim(0,50) +
   geom_point(data = national, aes(x = threshold, y = pct_n_atrisk_total), color = "blue") +
   geom_point(data = national, aes(x = threshold, y = pct_acres_atrisk_total), color = "red")
 
-ggsave(file = '/Users/bsimm/Dropbox/Tampa Bay Estuary Program/national_thresholds.png', width = 158, height = 158, dpi = 500, units = "mm", bg = "transparent")
-
-
-
+ggsave(file = '/Users/bsimm/Dropbox/Tampa Bay Estuary Program/Research/SCOTUS WOTUS/national_thresholds.svg', width = 158, height = 158, dpi = 500, units = "mm", bg = "transparent")
 
 
 
 # FYI - to get the transformation value, divide n_atrisk_total by pct_n_atrisk_total
 plot1 = ggplot(national_isolated_protection, aes(x = threshold, y = n_atrisk_total, fill = forcats::fct_rev(GIW_protection))) +
   geom_area(position = 'stack') +
-  scale_y_continuous(name = "Number", sec.axis = sec_axis(trans = ~./233129.1, name = "Pct"))
+  scale_y_continuous(name = "Number", sec.axis = sec_axis(trans = ~./170765.1, name = "Pct"))
 
-ggsave(file='/Users/bsimm/Dropbox/Tampa Bay Estuary Program/national_n_protections.svg', plot=plot1, width=200, height=158, units = "mm", bg = "transparent")
+ggsave(file='/Users/bsimm/Dropbox/Tampa Bay Estuary Program/Research/SCOTUS WOTUS/national_n_protections.svg', plot=plot1, width=200, height=158, units = "mm", bg = "transparent")
 
 plot2 = ggplot(national_isolated_protection, aes(x = threshold, y = acres_atrisk_total, fill = forcats::fct_rev(GIW_protection))) +
   geom_area(position = 'stack') +
-  scale_y_continuous(name = "Area", sec.axis = sec_axis(trans = ~./2953272, name = "Pct"))
+  scale_y_continuous(name = "Area", sec.axis = sec_axis(trans = ~./2599282, name = "Pct"))
 
-ggsave(file='/Users/bsimm/Dropbox/Tampa Bay Estuary Program/national_acres_protections.svg', plot=plot2, width=200, height=158, units = "mm", bg = "transparent")
+ggsave(file='/Users/bsimm/Dropbox/Tampa Bay Estuary Program/Research/SCOTUS WOTUS/national_acres_protections.svg', plot=plot2, width=200, height=158, units = "mm", bg = "transparent")
 
 
 
 national_wetlands$threshold <- as.numeric(national_wetlands$threshold_cat)
 national_wetlands$threshold <- ifelse(national_wetlands$threshold > 1, (national_wetlands$threshold-1)*10,national_wetlands$threshold)
 
-national_wetlands$wetland_type <- factor(national_wetlands$wetland_type, levels = c("Estuarine and Marine Wetland","Freshwater Forested/Shrub Wetland",
-                                                                                    "Freshwater Emergent Wetland","Freshwater Pond","Lake","Riverine","Other"))
+national_wetlands$wetland_type <- factor(national_wetlands$wetland_type, levels = c("Freshwater Forested/Shrub Wetland",
+                                                                                    "Freshwater Emergent Wetland","Freshwater Pond","Lake","Other"))
 
 plot1.1 = ggplot(national_wetlands, aes(x = threshold, y = n_atrisk_type, fill = wetland_type)) +
   geom_area(position = 'stack') +
-  scale_y_continuous(name = "Number", sec.axis = sec_axis(trans = ~./233129.1, name = "Pct"))
+  scale_y_continuous(name = "Number", sec.axis = sec_axis(trans = ~./170765.1, name = "Pct"))
 
-ggsave(file='/Users/bsimm/Dropbox/Tampa Bay Estuary Program/national_n_type.svg', plot=plot1, width=200, height=158, units = "mm", bg = "transparent")
+ggsave(file='/Users/bsimm/Dropbox/Tampa Bay Estuary Program/Research/SCOTUS WOTUS/national_n_type.svg', plot=plot1.1, width=200, height=158, units = "mm", bg = "transparent")
 
 plot2.1 = ggplot(national_wetlands, aes(x = threshold, y = acres_atrisk_type, fill = wetland_type)) +
   geom_area(position = 'stack') +
-  scale_y_continuous(name = "Area", sec.axis = sec_axis(trans = ~./2953272, name = "Pct"))
+  scale_y_continuous(name = "Area", sec.axis = sec_axis(trans = ~./2599282, name = "Pct"))
 
-ggsave(file='/Users/bsimm/Dropbox/Tampa Bay Estuary Program/national_acres_type.svg', plot=plot2, width=200, height=158, units = "mm", bg = "transparent")
+ggsave(file='/Users/bsimm/Dropbox/Tampa Bay Estuary Program/Research/SCOTUS WOTUS/national_acres_type.svg', plot=plot2.1, width=200, height=158, units = "mm", bg = "transparent")
 
 
 
@@ -758,7 +687,7 @@ ggsave(file = '/Users/bsimm/Dropbox/Tampa Bay Estuary Program/national_acres_typ
 
 
 
-state_medians <- states0.25 %>%
+state_medians <- states %>%
   group_by(state) %>%
   summarise(ac_1m = median(acres[nearest_m>1]),
             ac_10m = median(acres[nearest_m>10]),
