@@ -274,7 +274,6 @@ for(i in sts){
 
 }
 
-
 # save as parquet -----------------------------------------------------------------------------
 
 fls <- list.files(here('data'), full.names = T, recursive = F)
@@ -316,8 +315,8 @@ alldat %>%
 # parquet path
 pqdata <- open_dataset(here('data-parquet'))
 
-# PAD status data
-# https://www.usgs.gov/programs/gap-analysis-project/science/pad-us-data-download
+# # PAD status data
+# # https://www.usgs.gov/programs/gap-analysis-project/science/pad-us-data-download
 # padfull <- st_read('T:/05_GIS/PADUS3/PADUS3_fulldata.shp') %>%
 #   select(GAP_Sts, State_Nm) %>%
 #   ensure_multipolygons()
@@ -327,10 +326,18 @@ pqdata <- open_dataset(here('data-parquet'))
 # # create separate rdata files each state in padfull
 # sts <- sort(unique(padfull$State_Nm))
 # for(st in sts){
+#
 #   cat(st, '\n')
+#
 #   padtmp <- padfull %>%
 #     filter(State_Nm %in% st)
-#   save(padtmp, file = here(paste0('data-pad/', st, '.RData')), compress = 'xz')
+#
+#   # save
+#   outnm <- paste0('pad', st)
+#   outfl <- paste0(here('data-pad'), '/', outnm, '.RData')
+#   assign(outnm, padtmp)
+#   save(list = outnm, file = outfl, compress = 'xz')
+#
 # }
 
 # unique state abbr
@@ -340,16 +347,18 @@ sts <- pqdata %>%
   collect() %>%
   pull()
 
-for(st in sts){
+str <- Sys.time()
+for(i in sts){
 
-  cat(st, '\n')
+  cat(i, '\n')
 
   # load pad data by state
-  paddat<- load(here(paste0('data-pad/', st, '.RData')))
+  load(here(paste0('data-pad/pad', i, '.RData')))
+  paddat <- get(paste0('pad', i))
 
   # load state data
   wetdat <- pqdata %>%
-    filter(state == st) %>%
+    filter(state == i) %>%
     collect() %>%
     st_as_sf(coords = c('lon', 'lat'), crs = 4326) %>%
     st_transform(crs = st_crs(paddat)) %>%
@@ -357,18 +366,30 @@ for(st in sts){
       id = 1:n()
     )
 
-  # intersect wetdat with padtmp, accounts for overlappin polys in padtmp, gets min GAP
-  wetint <- wetdat[paddat, ] %>%
-    st_intersection(., paddat) %>%
+  # intersect wetdat with padtmp, accounts for overlapping polys in paddat, gets min GAP
+  paddatnogeo <- st_set_geometry(paddat, NULL)
+  wetint <- wetdat[paddat, ]
+  wetint2 <- st_intersects(wetint, paddat) %>%
+    as.data.frame() %>%
+    mutate(
+      GAP_Sts = paddatnogeo[.$col.id, 'GAP_Sts']
+    ) %>%
+    summarise(
+      GAP_Sts = min(as.numeric(GAP_Sts)),
+      .by = row.id
+    )
+  wetint <- wetint %>%
     st_set_geometry(NULL) %>%
-    select(id, GAP_Sts) %>%
-    filter(GAP_Sts == min(GAP_Sts), .by = id) %>%
-    unique()
+    mutate(
+      GAP_Sts = wetint2$GAP_Sts
+    ) %>%
+    select(id, GAP_Sts)
 
   # combine wetdat with gap intersection
   wetdat <- wetdat %>%
     left_join(wetint, by = 'id') %>%
     select(-id) %>%
+    st_transform(crs = 4326) %>%
     mutate(
       lon = st_coordinates(.)[, 1],
       lat = st_coordinates(.)[, 2]
@@ -381,6 +402,8 @@ for(st in sts){
   outfl <- paste0(here('data'), '/', outnm, '.RData')
   assign(outnm, wetdat)
   save(list = outnm, file = outfl)
+
+  print(Sys.time() - str)
 
 }
 
