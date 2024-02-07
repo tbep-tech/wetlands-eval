@@ -395,14 +395,9 @@ write.csv(national_wetlands, file = '/Users/bsimm/Dropbox/Tampa Bay Estuary Prog
 write.csv(state_numbers, file = '/Users/bsimm/Dropbox/Tampa Bay Estuary Program/Research/SCOTUS WOTUS/national_stats_state.csv')
 write.csv(wetland_numbers, file = '/Users/bsimm/Dropbox/Tampa Bay Estuary Program/Research/SCOTUS WOTUS/national_stats_type.csv')
 
-#############################
 
 
-
-
-
-
-############### Adding State Protections #######################
+############### STATE PROTECTIONS #######################
 
 protections <- read.csv(file = '/Users/bsimm/Dropbox/Tampa Bay Estuary Program/Research/SCOTUS WOTUS/state_protections.csv')
 
@@ -456,28 +451,6 @@ write.csv(national_isolated_type_unprotected, file = '/Users/bsimm/Dropbox/Tampa
 
 
 
-
-# DELETE I THINK
-test <- state_thresholds_wetlands_protection %>%
-  mutate(threshold_cat = as.factor(distthreshold)) %>%
-  group_by(threshold_cat, wetland_type, GIW_protection) %>%
-  summarise(n_atrisk_total = sum(n_atrisk),
-            acres_atrisk_total = sum(acres_atrisk))
-test2 <- merge(test, wetland_numbers, by = "wetland_type", all.x = TRUE) %>%
-  mutate(pct_n_atrisk = n_atrisk_total/total_number*100,
-         pct_acres_atrisk = acres_atrisk_total/total_acreage*100)
-
-test2 %>%
-  filter(threshold_cat == "50") %>%
-  ggplot(aes(fill = forcats::fct_rev(GIW_protection), y=pct_n_atrisk, x=wetland_type)) +
-  geom_bar(position="stack", stat="identity") +
-  ylim(0,50)
-
-test2 %>%
-  filter(threshold_cat == "50") %>%
-  ggplot(aes(fill = forcats::fct_rev(GIW_protection), y=pct_acres_atrisk, x=wetland_type)) +
-  geom_bar(position="stack", stat="identity") +
-  ylim(0,50)
 
 
 ############ PLOTS #############
@@ -562,25 +535,23 @@ ggsave(file='/Users/bsimm/Dropbox/Tampa Bay Estuary Program/Research/SCOTUS WOTU
 
 
 # PIE TESTS
-states_thresholds_wetlands$wetland_type <- factor(states_thresholds_wetlands$wetland_type, levels = c("Estuarine and Marine Wetland","Freshwater Forested/Shrub Wetland",
-                                                                                    "Freshwater Emergent Wetland","Freshwater Pond","Lake","Riverine","Other"))
+states_thresholds_wetlands$wetland_type <- factor(states_thresholds_wetlands$wetland_type, levels = c("Freshwater Forested/Shrub Wetland",
+                                                                                    "Freshwater Emergent Wetland","Freshwater Pond","Lake","Other"))
 states_thresholds_wetlands$state <- factor(states_thresholds_wetlands$state)
 
 forpies1 <- states_thresholds_wetlands %>%
-  filter(distthreshold == 50) %>%
+  filter(distthreshold == 1) %>%
   group_by(wetland_type, state, .drop = FALSE) %>%
   summarise(n_atrisk_total = sum(n_atrisk))
 
 
 pieplot1 <- ggplot(forpies1, aes(x="", y=n_atrisk_total, fill=wetland_type)) +
   geom_bar(width = 1, stat = "identity", position = position_fill()) +
-  coord_polar("y", start=0) +
-  scale_fill_manual(values = c("Estuarine and Marine Wetland" = "#7B76AD",
-                               "Freshwater Forested/Shrub Wetland" = "#017B7B",
+  coord_polar("y", start=0, direction = -1) +
+  scale_fill_manual(values = c("Freshwater Forested/Shrub Wetland" = "#017B7B",
                                "Freshwater Emergent Wetland" = "#02ADAB",
                                "Freshwater Pond" = "#015D7E",
                                "Lake" = "#58A6C3",
-                               "Riverine" = "#A68461",
                                "Other" = "#4A4A4A")) +
   facet_wrap(~state, nrow = 5) +
   theme(panel.background = element_rect(fill='transparent'),
@@ -593,17 +564,17 @@ pieplot1 <- ggplot(forpies1, aes(x="", y=n_atrisk_total, fill=wetland_type)) +
         axis.ticks = element_blank(),
         panel.grid  = element_blank())
 
-ggsave(file='/Users/bsimm/Dropbox/Tampa Bay Estuary Program/state_n_type_isolated.svg', plot=pieplot1, width=200, height=90, units = "mm", bg = "transparent")
+ggsave(file='/Users/bsimm/Dropbox/Tampa Bay Estuary Program/Research/SCOTUS WOTUS/state_n_type_isolated.svg', plot=pieplot1, width=200, height=90, units = "mm", bg = "transparent")
 
 forpies2 <- states_thresholds_wetlands %>%
-  filter(distthreshold == 50) %>%
+  filter(distthreshold == 1) %>%
   group_by(wetland_type, state, .drop = FALSE) %>%
   summarise(acres_atrisk_total = sum(acres_atrisk))
 
 
 pieplot2 <- ggplot(forpies2, aes(x="", y=acres_atrisk_total, fill=wetland_type)) +
   geom_bar(width = 1, stat = "identity", position = position_fill()) +
-  coord_polar("y", start=0) +
+  coord_polar("y", start=0, direction = -1) +
   scale_fill_manual(values = c("Estuarine and Marine Wetland" = "#7B76AD",
                                "Freshwater Forested/Shrub Wetland" = "#017B7B",
                                "Freshwater Emergent Wetland" = "#02ADAB",
@@ -622,103 +593,216 @@ pieplot2 <- ggplot(forpies2, aes(x="", y=acres_atrisk_total, fill=wetland_type))
         axis.ticks = element_blank(),
         panel.grid  = element_blank())
 
-ggsave(file='/Users/bsimm/Dropbox/Tampa Bay Estuary Program/state_acres_type_isolated.svg', plot=pieplot2, width=200, height=90, units = "mm", bg = "transparent")
+ggsave(file='/Users/bsimm/Dropbox/Tampa Bay Estuary Program/Research/SCOTUS WOTUS/state_acres_type_isolated.svg', plot=pieplot2, width=200, height=90, units = "mm", bg = "transparent")
 
-
-
-
-
-
-
-
-
-national_wetlands$threshold <- as.numeric(national_wetlands$threshold_cat)
-national_wetlands$threshold <- ifelse(national_wetlands$threshold > 1, (national_wetlands$threshold-1)*10,national_wetlands$threshold)
 
 plot1 = ggplot(national_wetlands, aes(x=threshold, y=pct_natrisk_total, group=wetland_type, color=wetland_type)) +
   geom_line(linewidth = 1) +
   xlab("Distance to Nearest Hydrological Feature (m)") +
-  ylab("Percent At Risk") +
-  ylim(0,15)
+  ylab("Percent At Risk")
 
-ggsave(file='/Users/bsimm/Dropbox/Tampa Bay Estuary Program/national_thresholds_n_types.svg', plot=plot1, width=200, height=158, units = "mm", bg = "transparent")
+ggsave(file='/Users/bsimm/Dropbox/Tampa Bay Estuary Program/Research/SCOTUS WOTUS/national_thresholds_n_types.svg', plot=plot1, width=200, height=158, units = "mm", bg = "transparent")
 
 plot2 = ggplot(national_wetlands, aes(x=threshold, y=pct_acres_atrisk_total, group=wetland_type, color=wetland_type)) +
   geom_line(linewidth = 1) +
   xlab("Distance to Nearest Hydrological Feature (m)") +
-  ylab("Percent Area At Risk") +
-  ylim(0,15)
+  ylab("Percent Area At Risk")
 
-ggsave(file='/Users/bsimm/Dropbox/Tampa Bay Estuary Program/national_thresholds_acres_types.svg', plot=plot2, width=200, height=158, units = "mm", bg = "transparent")
-
-
-
-#~~~~~~~~~~~~~~~~~~~~~~
+ggsave(file='/Users/bsimm/Dropbox/Tampa Bay Estuary Program/Research/SCOTUS WOTUS/national_thresholds_acres_types.svg', plot=plot2, width=200, height=158, units = "mm", bg = "transparent")
 
 
 
 
 
-national_isolated_type_protection$wetland_type <- factor(national_isolated_type_protection$wetland_type,
-                                                         levels = c("Estuarine and Marine Wetland","Freshwater Forested/Shrub Wetland",
-                                                                    "Freshwater Emergent Wetland","Freshwater Pond","Lake","Riverine","Other"))
-national_isolated_type_unprotected$wetland_type <- factor(national_isolated_type_unprotected$wetland_type,
-                                                         levels = c("Estuarine and Marine Wetland","Freshwater Forested/Shrub Wetland",
-                                                                    "Freshwater Emergent Wetland","Freshwater Pond","Lake","Riverine","Other"))
-national_wetlands$wetland_type <- factor(national_wetlands$wetland_type,
-                                                          levels = c("Estuarine and Marine Wetland","Freshwater Forested/Shrub Wetland",
-                                                                     "Freshwater Emergent Wetland","Freshwater Pond","Lake","Riverine","Other"))
-
-ggplot(national_isolated_type_unprotected, aes(x = threshold, y = n_atrisk_total, fill = wetland_type)) +
-  geom_area(position = 'stack') +
-  scale_y_continuous(name = "Number", sec.axis = sec_axis(trans = ~./254165.8, name = "Pct")) +
-  geom_point(position = 'stack')
-
-ggsave(file = '/Users/bsimm/Dropbox/Tampa Bay Estuary Program/national_n_type_unprotected.png', width = 200, height = 158, dpi = 500, units = "mm", bg = "transparent")
-
-ggplot(national_isolated_type_unprotected, aes(x = threshold, y = acres_atrisk_total, fill = wetland_type)) +
-  geom_area(position = 'stack') +
-  scale_y_continuous(name = "acres", sec.axis = sec_axis(trans = ~./2918865, name = "Pct")) +
-  geom_point(position = 'stack')
-
-ggsave(file = '/Users/bsimm/Dropbox/Tampa Bay Estuary Program/national_acres_type_unprotected.png', width = 200, height = 158, dpi = 500, units = "mm", bg = "transparent")
+########### WETLANDS BY GAP STATUS ###########
 
 
+###### BY STATE & wetland_type ######
+
+# stats for at-risk wetlands > 1 m from hydrological feature
+states_1m <- states %>%
+  group_by(state, GAP_Sts_cat) %>%
+  summarise(n_atrisk = sum(nearest_m>1),
+            acres_atrisk = sum(acres[nearest_m>1]),
+            pct_n_atrisk = sum(nearest_m>1)/n()*100,
+            pct_acres_atrisk = sum(acres[nearest_m>1])/sum(acres)*100) %>%
+  mutate(distthreshold = 1)
+
+# stats for at-risk wetlands > 10 m from hydrological feature
+states_10m <- states %>%
+  group_by(state, GAP_Sts_cat) %>%
+  summarise(n_atrisk = sum(nearest_m>10),
+            acres_atrisk = sum(acres[nearest_m>10]),
+            pct_n_atrisk = sum(nearest_m>10)/n()*100,
+            pct_acres_atrisk = sum(acres[nearest_m>10])/sum(acres)*100) %>%
+  mutate(distthreshold = 10)
+
+# stats for at-risk wetlands > 20 m from hydrological feature
+states_20m <- states %>%
+  group_by(state, GAP_Sts_cat) %>%
+  summarise(n_atrisk = sum(nearest_m>20),
+            acres_atrisk = sum(acres[nearest_m>20]),
+            pct_n_atrisk = sum(nearest_m>20)/n()*100,
+            pct_acres_atrisk = sum(acres[nearest_m>20])/sum(acres)*100) %>%
+  mutate(distthreshold = 20)
+
+# stats for at-risk wetlands > 30 m from hydrological feature
+states_30m <- states %>%
+  group_by(state, GAP_Sts_cat) %>%
+  summarise(n_atrisk = sum(nearest_m>30),
+            acres_atrisk = sum(acres[nearest_m>30]),
+            pct_n_atrisk = sum(nearest_m>30)/n()*100,
+            pct_acres_atrisk = sum(acres[nearest_m>30])/sum(acres)*100) %>%
+  mutate(distthreshold = 30)
+
+# stats for at-risk wetlands > 40 m from hydrological feature
+states_40m <- states %>%
+  group_by(state, GAP_Sts_cat) %>%
+  summarise(n_atrisk = sum(nearest_m>40),
+            acres_atrisk = sum(acres[nearest_m>40]),
+            pct_n_atrisk = sum(nearest_m>40)/n()*100,
+            pct_acres_atrisk = sum(acres[nearest_m>40])/sum(acres)*100) %>%
+  mutate(distthreshold = 40)
+
+# stats for at-risk wetlands > 50 m from hydrological feature
+states_50m <- states %>%
+  group_by(state, GAP_Sts_cat) %>%
+  summarise(n_atrisk = sum(nearest_m>50),
+            acres_atrisk = sum(acres[nearest_m>50]),
+            pct_n_atrisk = sum(nearest_m>50)/n()*100,
+            pct_acres_atrisk = sum(acres[nearest_m>50])/sum(acres)*100) %>%
+  mutate(distthreshold = 50)
+
+# stats for at-risk wetlands > 60 m from hydrological feature
+states_60m <- states %>%
+  group_by(state, GAP_Sts_cat) %>%
+  summarise(n_atrisk = sum(nearest_m>60),
+            acres_atrisk = sum(acres[nearest_m>60]),
+            pct_n_atrisk = sum(nearest_m>60)/n()*100,
+            pct_acres_atrisk = sum(acres[nearest_m>60])/sum(acres)*100) %>%
+  mutate(distthreshold = 60)
+
+# stats for at-risk wetlands > 70 m from hydrological feature
+states_70m <- states %>%
+  group_by(state, GAP_Sts_cat) %>%
+  summarise(n_atrisk = sum(nearest_m>70),
+            acres_atrisk = sum(acres[nearest_m>70]),
+            pct_n_atrisk = sum(nearest_m>70)/n()*100,
+            pct_acres_atrisk = sum(acres[nearest_m>70])/sum(acres)*100) %>%
+  mutate(distthreshold = 70)
+
+# stats for at-risk wetlands > 80 m from hydrological feature
+states_80m <- states %>%
+  group_by(state, GAP_Sts_cat) %>%
+  summarise(n_atrisk = sum(nearest_m>80),
+            acres_atrisk = sum(acres[nearest_m>80]),
+            pct_n_atrisk = sum(nearest_m>80)/n()*100,
+            pct_acres_atrisk = sum(acres[nearest_m>80])/sum(acres)*100) %>%
+  mutate(distthreshold = 80)
+
+# stats for at-risk wetlands > 90 m from hydrological feature
+states_90m <- states %>%
+  group_by(state, GAP_Sts_cat) %>%
+  summarise(n_atrisk = sum(nearest_m>90),
+            acres_atrisk = sum(acres[nearest_m>90]),
+            pct_n_atrisk = sum(nearest_m>90)/n()*100,
+            pct_acres_atrisk = sum(acres[nearest_m>90])/sum(acres)*100) %>%
+  mutate(distthreshold = 90)
+
+# stats for at-risk wetlands > 100 m from hydrological feature
+states_100m <- states %>%
+  group_by(state, GAP_Sts_cat) %>%
+  summarise(n_atrisk = sum(nearest_m>100),
+            acres_atrisk = sum(acres[nearest_m>100]),
+            pct_n_atrisk = sum(nearest_m>100)/n()*100,
+            pct_acres_atrisk = sum(acres[nearest_m>100])/sum(acres)*100) %>%
+  mutate(distthreshold = 100)
 
 
+states_thresholds_gap <- rbind(states_1m,states_10m,states_20m,states_30m,states_40m,states_50m,
+                                    states_60m,states_70m,states_80m,states_90m,states_100m)
 
-state_medians <- states %>%
+
+################# BY THRESHOLD ###############
+
+# national stats by threshold & gap status
+national_gap <- states_thresholds_gap %>%
+  mutate(threshold_cat = as.factor(distthreshold)) %>%
+  group_by(threshold_cat, GAP_Sts_cat) %>%
+  summarise(n_atrisk_total = sum(n_atrisk),
+            acres_atrisk_total = sum(acres_atrisk),
+            pct_n_atrisk_total = sum(n_atrisk)/nrow(states)*100,
+            pct_acres_atrisk_total = sum(acres_atrisk)/sum(states$acres)*100)
+
+
+wetland_numbers <- states %>%
+  group_by(wetland_type) %>%
+  summarise(total_number_type = n(),
+            total_acreage_type = sum(acres)) %>%
+  as.data.frame()
+
+national_wetlands <- merge(national_wetlands, wetland_numbers, by = "wetland_type", all.x = TRUE)
+
+national_wetlands <- national_wetlands %>%
+  mutate(total_number_wetlands = sum(wetland_numbers$total_number_type),
+         total_acreage_wetlands = sum(wetland_numbers$total_acreage_type),
+         pct_natrisk_type = n_atrisk_type/total_number_type*100,
+         pct_acres_atrisk_type = acres_atrisk_type/total_acreage_type*100,
+         pct_natrisk_total = n_atrisk_type/total_number_wetlands*100,
+         pct_acres_atrisk_total = acres_atrisk_type/total_acreage_wetlands*100)
+
+state_numbers <- states %>%
   group_by(state) %>%
-  summarise(ac_1m = median(acres[nearest_m>1]),
-            ac_10m = median(acres[nearest_m>10]),
-            ac_20m = median(acres[nearest_m>20]),
-            ac_30m = median(acres[nearest_m>30]),
-            ac_40m = median(acres[nearest_m>40]),
-            ac_50m = median(acres[nearest_m>50]),
-            ac_60m = median(acres[nearest_m>60]),
-            ac_70m = median(acres[nearest_m>70]),
-            ac_80m = median(acres[nearest_m>80]),
-            ac_90m = median(acres[nearest_m>90]),
-            ac_100m = median(acres[nearest_m>100]))
+  summarise(total_number = n(),
+            total_acreage = sum(acres)) %>%
+  as.data.frame()
 
 
-mid <- 37
+############## save datasets ##############
 
-ggplot(states_thresholds, aes(x = distthreshold, y = pct_n_atrisk, colour = pct_n_atrisk)) +
+
+write.csv(states_thresholds_gap, file = '/Users/bsimm/Dropbox/Tampa Bay Estuary Program/Research/SCOTUS WOTUS/state_thresholds_gap.csv')
+
+write.csv(national_gap, file = '/Users/bsimm/Dropbox/Tampa Bay Estuary Program/Research/SCOTUS WOTUS/national_thresholds_gap.csv')
+
+
+
+############ PLOTS #############
+
+national_gap$threshold <- as.numeric(national_gap$threshold_cat)
+national_gap$threshold <- ifelse(national_gap$threshold > 1, (national_gap$threshold - 1)*10, national_gap$threshold)
+
+# FYI - to get the transformation value, divide n_atrisk_total by pct_n_atrisk_total
+plot1 = ggplot(national_gap, aes(x = threshold, y = n_atrisk_total, fill = forcats::fct_rev(GAP_Sts_cat))) +
+  geom_area(position = 'stack') +
+  scale_y_continuous(name = "Number", sec.axis = sec_axis(trans = ~./170765.1, name = "Pct"))
+
+ggsave(file='/Users/bsimm/Dropbox/Tampa Bay Estuary Program/Research/SCOTUS WOTUS/national_n_gap.svg', plot=plot1, width=200, height=158, units = "mm", bg = "transparent")
+
+plot2 = ggplot(national_gap, aes(x = threshold, y = acres_atrisk_total, fill = forcats::fct_rev(GAP_Sts_cat))) +
+  geom_area(position = 'stack') +
+  scale_y_continuous(name = "Area", sec.axis = sec_axis(trans = ~./2599282, name = "Pct"))
+
+ggsave(file='/Users/bsimm/Dropbox/Tampa Bay Estuary Program/Research/SCOTUS WOTUS/national_acres_gap.svg', plot=plot2, width=200, height=158, units = "mm", bg = "transparent")
+
+
+
+
+
+
+
+
+
+plot1 = ggplot(national_wetlands, aes(x=threshold, y=pct_natrisk_total, group=wetland_type, color=wetland_type)) +
   geom_line(linewidth = 1) +
-  scale_y_continuous(breaks = seq(0, 75, len = 4)) +
   xlab("Distance to Nearest Hydrological Feature (m)") +
-  ylab("Share of State's Wetlands Considered Isolated (%)") +
-  labs(colour='%') +
-  facet_wrap(vars(state), nrow = 10) +
-  scale_colour_gradient2(midpoint = mid, low = "black", mid = "blue", high = "red", na.value = NA)
+  ylab("Percent At Risk")
 
-ggsave(file = '/Users/bsimm/Dropbox/Tampa Bay Estuary Program/state_thresholds_pctN.png', width = 158, height = 196, dpi = 500, units = "mm", bg = "transparent")
+ggsave(file='/Users/bsimm/Dropbox/Tampa Bay Estuary Program/Research/SCOTUS WOTUS/national_thresholds_n_types.svg', plot=plot1, width=200, height=158, units = "mm", bg = "transparent")
 
+plot2 = ggplot(national_wetlands, aes(x=threshold, y=pct_acres_atrisk_total, group=wetland_type, color=wetland_type)) +
+  geom_line(linewidth = 1) +
+  xlab("Distance to Nearest Hydrological Feature (m)") +
+  ylab("Percent Area At Risk")
 
-
-
-
-
-
-
+ggsave(file='/Users/bsimm/Dropbox/Tampa Bay Estuary Program/Research/SCOTUS WOTUS/national_thresholds_acres_types.svg', plot=plot2, width=200, height=158, units = "mm", bg = "transparent")
