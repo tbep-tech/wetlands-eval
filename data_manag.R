@@ -540,7 +540,7 @@ states_thresholds_wetlands$wetland_type <- factor(states_thresholds_wetlands$wet
 states_thresholds_wetlands$state <- factor(states_thresholds_wetlands$state)
 
 forpies1 <- states_thresholds_wetlands %>%
-  filter(distthreshold == 1) %>%
+  filter(distthreshold == 50) %>%
   group_by(wetland_type, state, .drop = FALSE) %>%
   summarise(n_atrisk_total = sum(n_atrisk))
 
@@ -564,10 +564,10 @@ pieplot1 <- ggplot(forpies1, aes(x="", y=n_atrisk_total, fill=wetland_type)) +
         axis.ticks = element_blank(),
         panel.grid  = element_blank())
 
-ggsave(file='/Users/bsimm/Dropbox/Tampa Bay Estuary Program/Research/SCOTUS WOTUS/state_n_type_isolated.svg', plot=pieplot1, width=200, height=90, units = "mm", bg = "transparent")
+ggsave(file='/Users/bsimm/Dropbox/Tampa Bay Estuary Program/Research/SCOTUS WOTUS/state_n_type_isolated_50.svg', plot=pieplot1, width=200, height=90, units = "mm", bg = "transparent")
 
 forpies2 <- states_thresholds_wetlands %>%
-  filter(distthreshold == 1) %>%
+  filter(distthreshold == 50) %>%
   group_by(wetland_type, state, .drop = FALSE) %>%
   summarise(acres_atrisk_total = sum(acres_atrisk))
 
@@ -593,7 +593,7 @@ pieplot2 <- ggplot(forpies2, aes(x="", y=acres_atrisk_total, fill=wetland_type))
         axis.ticks = element_blank(),
         panel.grid  = element_blank())
 
-ggsave(file='/Users/bsimm/Dropbox/Tampa Bay Estuary Program/Research/SCOTUS WOTUS/state_acres_type_isolated.svg', plot=pieplot2, width=200, height=90, units = "mm", bg = "transparent")
+ggsave(file='/Users/bsimm/Dropbox/Tampa Bay Estuary Program/Research/SCOTUS WOTUS/state_acres_type_isolated_50.svg', plot=pieplot2, width=200, height=90, units = "mm", bg = "transparent")
 
 
 plot1 = ggplot(national_wetlands, aes(x=threshold, y=pct_natrisk_total, group=wetland_type, color=wetland_type)) +
