@@ -123,7 +123,10 @@ states$GAP_Sts_cat <- as.factor(states$GAP_Sts)
 states$UniqueID = seq.int(nrow(states))
 
 
-
+gapcheck <- states %>%
+  group_by(GAP_Sts) %>%
+  summarize(wetland_n = n(),
+            wetland_area = sum(acres))
 
 
 ########### ALL WETLANDS (IGNORE GAP STATUS) ##############
